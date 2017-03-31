@@ -50,7 +50,7 @@ public class OrderManager {
 				tryCounter++;
 			}
 		}
-		System.out.println("Failed to connect to " + location.toString());
+		System.out.println("OM: Failed to connect to " + location.toString());
 		return null;
 	}
 
@@ -101,7 +101,11 @@ public class OrderManager {
 	public void run() throws IOException, ClassNotFoundException, InterruptedException{
 		while(true){
 			// ----------------------------------------------------------------
-			System.out.print(" Orders: " + orders.size());
+			System.out.print("OM:  Orders: " + orders.size() + "\n");
+			//System.gc();
+            Runtime rt = Runtime.getRuntime();
+            long memory = (rt.totalMemory() - rt.freeMemory()) / 1024 / 1024;
+            System.out.print("OM:  Memory: " + memory + " MB \n");
 
 			// ----------------------------------------------------------------
 			getClientOrders();
@@ -121,7 +125,7 @@ public class OrderManager {
 				ObjectInputStream is = new ObjectInputStream(client.getInputStream());
 				String method = (String) is.readObject();
 
-				System.out.println(Thread.currentThread().getName() + " calling " + method);
+				System.out.println("OM: " + Thread.currentThread().getName() + " calling " + method);
 
 				switch (method) {
 					case "newOrderSingle":
@@ -141,7 +145,7 @@ public class OrderManager {
 			if (0 < router.getInputStream().available()) {
 				ObjectInputStream is = new ObjectInputStream(router.getInputStream());
 				String method = (String) is.readObject();
-				System.out.println(Thread.currentThread().getName() + " calling " + method);
+				System.out.println("OM: " + Thread.currentThread().getName() + " calling " + method);
 				switch (method) {
 					case "bestPrice":
 						int OrderId = is.readInt();
@@ -167,7 +171,7 @@ public class OrderManager {
 		ObjectInputStream is = new ObjectInputStream(this.trader.getInputStream());
 		String method = (String) is.readObject();
 
-		System.out.println(Thread.currentThread().getName() + " calling " + method);
+		System.out.println("OM: " + Thread.currentThread().getName() + " calling " + method);
 		switch (method) {
 			case "acceptOrder":
 				acceptOrder(is.readInt());
@@ -202,7 +206,7 @@ public class OrderManager {
 	public void acceptOrder(int id) throws IOException {
 		Order o = orders.get(id);
 		if (o.OrdStatus != 'A') { // Pending New
-			System.out.println("error accepting order that has already been accepted");
+			System.out.println("OM: error accepting order that has already been accepted");
 			return;
 		}
 		o.OrdStatus = '0'; // New
@@ -215,7 +219,7 @@ public class OrderManager {
 	public void sliceOrder(int id, int sliceSize) throws IOException {
 		Order o = orders.get(id);
 		if (sliceSize > o.sizeRemaining() - o.sliceSizes()) {
-			System.out.println("error sliceSize is bigger than remaining size to be filled on the order");
+			System.out.println("OM: error sliceSize is bigger than remaining size to be filled on the order");
 			return;
 		}
 		int sliceId = o.newSlice(sliceSize);

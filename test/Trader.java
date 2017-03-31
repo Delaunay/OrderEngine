@@ -31,7 +31,7 @@ public class Trader extends Thread implements TradeScreen{
 				if(0<s.available()){
 					is=new ObjectInputStream(s);  //TODO check if we need to create each time. this will block if no data, but maybe we can still try to create it once instead of repeatedly
 					api method=(api)is.readObject();
-					System.out.println(Thread.currentThread().getName()+" calling: "+method);
+					System.out.println("T : " + Thread.currentThread().getName()+" calling: "+method);
 					switch(method){
 						case newOrder : newOrder(is.readInt(),(Order)is.readObject());break;
 						case price    : price(is.readInt(),(Order)is.readObject());break;

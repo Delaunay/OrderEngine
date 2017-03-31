@@ -33,14 +33,14 @@ public class Trader extends Thread implements TradeScreen{
 					api method=(api)is.readObject();
 					System.out.println(Thread.currentThread().getName()+" calling: "+method);
 					switch(method){
-						case newOrder:newOrder(is.readInt(),(Order)is.readObject());break;
-						case price:price(is.readInt(),(Order)is.readObject());break;
-						case cross:is.readInt();is.readObject();break; //TODO
-						case fill:is.readInt();is.readObject();break; //TODO
+						case newOrder : newOrder(is.readInt(),(Order)is.readObject());break;
+						case price    : price(is.readInt(),(Order)is.readObject());break;
+						case cross    : is.readInt();is.readObject();break; //TODO
+						case fill     : is.readInt();is.readObject();break; //TODO
 					}
 				}else{
 					//System.out.println("Trader Waiting for data to be available - sleep 1s");
-					Thread.sleep(1000);
+					Thread.sleep(100);
 				}
 			}
 		} catch (IOException | ClassNotFoundException | InterruptedException e) {

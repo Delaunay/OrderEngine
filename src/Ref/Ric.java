@@ -3,21 +3,21 @@ package Ref;
 import java.io.Serializable;
 
 
-public class Ric implements Serializable{
-	public String ric;
+public class Ric implements Serializable {
+    public String ric;
 
-	/**
-	 * @param Reuters Instrument Code
-	 */
-	public Ric(String ric){
-		this.ric=ric;
-	}
+    /**
+     * @param Reuters Instrument Code
+     */
+    public Ric(String ric) {
+        this.ric = ric;
+    }
 
-	public String getEx(){
-		return ric.split(".")[1];
-	}
+    public String getEx() {
+        return ric.split(".")[1];
+    }
 
-	public String getCompany(){
-		return ric.split(".")[0];
-	}
+    public String getCompany() {
+        return ric.split(".")[0];
+    }
 }

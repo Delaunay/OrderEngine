@@ -17,7 +17,6 @@ import OrderRouter.Router;
 import TradeScreen.TradeScreen;
 import org.apache.log4j.Logger;
 
-import static com.sun.org.apache.bcel.internal.classfile.JavaClass.FILE;
 import static org.apache.log4j.Level.DEBUG;
 
 

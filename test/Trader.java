@@ -38,7 +38,8 @@ public class Trader extends Thread implements TradeScreen{
 
             // TODO check not create a new ObjectInputStream each time
             //if (is == null) This does not work
-                is = new ObjectInputStream(s);
+            is = new ObjectInputStream(s);
+            is.close();
 
             api   method  = (api) is.readObject();
             int   id      = is.readInt();

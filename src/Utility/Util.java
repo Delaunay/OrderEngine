@@ -1,8 +1,30 @@
+package Utility;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
 
 public class Util {
+
+    public static abstract class ScheduledTask{
+        private long start = System.currentTimeMillis();
+        private long end;
+        protected long delta;
+
+        public ScheduledTask(long delta_){
+            delta = delta_;
+        }
+
+        public void run(){
+            end = System.currentTimeMillis();
+            if (end - start > delta){
+                start = end;
+                scheduledJob();
+            }
+        }
+
+        abstract public void scheduledJob();
+    }
 
     public static HashMap<String, String> readArgs(String[] args, HashSet<String> opt_name){
 
@@ -22,7 +44,6 @@ public class Util {
                     }
                 default:
                     print("Value \"" + args[i] + "\" not recognized");
-                    continue;
             }
         }
 

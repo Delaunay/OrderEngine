@@ -3,9 +3,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.sql.Time;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -14,6 +12,7 @@ import OrderClient.NewOrderSingle;
 import OrderManager.Order;
 import Ref.Instrument;
 import Ref.Ric;
+import Utility.Util;
 
 public class SampleClient extends Mock implements Client{
     private static final Random RANDOM_NUM_GENERATOR = new Random();
@@ -115,7 +114,7 @@ public class SampleClient extends Mock implements Client{
 
         /*
         for(Map.Entry item : OUT_QUEUE.entrySet()){
-            Util.print("id = " + item.getKey() + ", Order = " + item.getValue());
+            Utility.Util.print("id = " + item.getKey() + ", Order = " + item.getValue());
         } */
     }
 
@@ -152,22 +151,21 @@ public class SampleClient extends Mock implements Client{
 
     @Override
     public void messageHandler(){
-        long start = System.currentTimeMillis();
-        long end = start;
+        // Print the summary from time to time
+        ScheduledPrint sp = new ScheduledPrint(1000, this);
+
+        // Create a new order every X millisecond
+        ScheduledOrder so = new ScheduledOrder(1000, this);
 
         try {
             while (true){
                 //is.wait(); //this throws an exception!!
                 readMessage();
 
-                TimeUnit.MILLISECONDS.sleep(1);
+                so.run();
+                sp.run();
 
-                // Print the summary from time to time
-                end = System.currentTimeMillis();
-                if (end - start > 1000){
-                    summary();
-                    start = end;
-                }
+                TimeUnit.MILLISECONDS.sleep(1);
             }
         } catch (ClassNotFoundException e){
             show("Received an weird message");
@@ -195,6 +193,40 @@ public class SampleClient extends Mock implements Client{
         int     OrdStatus;
         methods whatToDo = methods.dontKnow;
     }
+
+    static class ScheduledPrint extends Util.ScheduledTask{
+        SampleClient client;
+
+        ScheduledPrint(long delta, SampleClient client_){
+            super(delta);
+            client = client_;
+        }
+
+        @Override
+        public void scheduledJob(){
+            client.summary();
+        }
+    }
+
+    static class ScheduledOrder extends Util.ScheduledTask{
+        SampleClient client;
+
+        ScheduledOrder(long delta, SampleClient client_){
+            super(delta);
+            client = client_;
+        }
+
+        @Override
+        public void scheduledJob(){
+            try {
+                client.sendOrder(null);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+
 /*listen for connections
 once order manager has connected, then send and cancel orders randomly
 listen for messages from order manager and print them to stdout.*/

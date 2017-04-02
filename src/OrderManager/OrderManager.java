@@ -17,6 +17,8 @@ import OrderRouter.Router;
 import TradeScreen.TradeScreen;
 import org.apache.log4j.Logger;
 
+import Utility.Util;
+
 import static org.apache.log4j.Level.DEBUG;
 
 
@@ -72,9 +74,18 @@ public class OrderManager {
 		processTraderMessages();
 	}
 
+	void summary(){
+        /*/System.gc();
+        Runtime rt = Runtime.getRuntime();
+        long memory = (rt.totalMemory() - rt.freeMemory()) / 1024 / 1024;
+        print("    Memory: " + memory + " MB ");
+        /*/
+        print("    Orders: " + orders.size());
+    }
+
 	public void run(){
-        long start = System.currentTimeMillis();
-        long end = start;
+        // Print the summary from time to time
+        ScheduledPrint sp = new ScheduledPrint(1000, this);
 
 		while(true){
 
@@ -96,17 +107,7 @@ public class OrderManager {
 			} catch (InterruptedException e) {
 			}
 
-            // Print the summary from time to time
-            end = System.currentTimeMillis();
-            if (end - start > 1000){
-                /*/System.gc();
-			    Runtime rt = Runtime.getRuntime();
-                long memory = (rt.totalMemory() - rt.freeMemory()) / 1024 / 1024;
-                print("    Memory: " + memory + " MB ");
-                /*/
-                print("    Orders: " + orders.size());
-                start = end;
-            }
+            sp.run();
 		}
 	}
 
@@ -398,4 +399,19 @@ public class OrderManager {
 	public void initLog(){
 		log = LogManager.getLogger("Debug");
 	}
+
+
+    static class ScheduledPrint extends Utility.Util.ScheduledTask{
+        OrderManager manager;
+
+        ScheduledPrint(long delta, OrderManager manager_){
+            super(delta);
+            manager = manager_;
+        }
+
+        @Override
+        public void scheduledJob(){
+            manager.summary();
+        }
+    }
 }

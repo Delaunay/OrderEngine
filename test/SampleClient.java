@@ -3,7 +3,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.sql.Time;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -21,9 +23,12 @@ public class SampleClient extends Mock implements Client{
             new Instrument(new Ric("BT.L"))
     };
 
-    private static final HashMap OUT_QUEUE = new HashMap(); // queue for outgoing orders
-    private static int 		     id = 0; 					// message id number
-    private Socket 				 omConn; 					// connection to order manager
+    // queue for outgoing orders
+    private HashMap<Integer, NewOrderSingle> OUT_QUEUE = new HashMap<>();
+    // message id number used as a `primary key` thats why it is static
+    // Although this needs to change, the id should be given by the OrderManager not the client
+    private static int 		     id = 0;
+    private Socket 				 omConn; // connection to order manager
     private ObjectInputStream    is;
 
     public SampleClient(int port) throws IOException{
@@ -48,7 +53,7 @@ public class SampleClient extends Mock implements Client{
         if(omConn.isConnected()){
             ObjectOutputStream os = new ObjectOutputStream(omConn.getOutputStream());
             os.writeObject("newOrderSingle");
-            //os.writeObject("35=D;");
+            //os.writeObject("35=D;"); // is this a delete ?
             os.writeInt(id);
             os.writeObject(nos);
             os.flush();
@@ -104,6 +109,16 @@ public class SampleClient extends Mock implements Client{
         return m;
     }
 
+    /** Print out a summary of the Client, outstanding orders*/
+    public void summary(){
+        Util.print(Thread.currentThread().getName() + " has: " + OUT_QUEUE.size() + " outstanding orders");
+
+        /*
+        for(Map.Entry item : OUT_QUEUE.entrySet()){
+            Util.print("id = " + item.getKey() + ", Order = " + item.getValue());
+        } */
+    }
+
     public void readMessage() throws IOException, ClassNotFoundException{
         while(omConn.getInputStream().available() > 0){
             is = new ObjectInputStream(omConn.getInputStream());
@@ -121,7 +136,7 @@ public class SampleClient extends Mock implements Client{
                     newOrderSingleAcknowledgement(m.OrderId);
                     break;
                 default:
-                    show("Not handeld case: " + m.whatToDo + " " + m.OrdStatus);
+                    show("Not handled case: " + m.whatToDo + " " + m.OrdStatus);
             }
 
             /*message=connection.getMessage();
@@ -137,18 +152,27 @@ public class SampleClient extends Mock implements Client{
 
     @Override
     public void messageHandler(){
+        long start = System.currentTimeMillis();
+        long end = start;
+
         try {
             while (true){
                 //is.wait(); //this throws an exception!!
                 readMessage();
 
                 TimeUnit.MILLISECONDS.sleep(1);
+
+                // Print the summary from time to time
+                end = System.currentTimeMillis();
+                if (end - start > 1000){
+                    summary();
+                    start = end;
+                }
             }
         } catch (ClassNotFoundException e){
             show("Received an weird message");
 
         } catch (IOException e){
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (InterruptedException e){
             // dont care

@@ -12,8 +12,8 @@ public class Main {
 
         //start sample clients
 
-        (new MockClient("Client 1", 2000, 1)).start();
-        (new MockClient("Client 2", 2001, 1)).start();
+        (new MockClient("Client 1", 2000, 10)).start();
+        (new MockClient("Client 2", 2001, 10)).start();
 
         //start sample routers
         (new SampleRouter("Router LSE", 2010)).start();
@@ -51,20 +51,11 @@ class MockClient extends Thread {
         try {
             SampleClient client = new SampleClient(port);
 
-            if (port == 2000) {
-                //TODO why does this take an arg?
-                //client.sendOrder(null);
-
-                for (int i = 0; i < orders; ++i) {
-                    int id = client.sendOrder(null);
-                }
-
-                //TODO client.sendCancel(id);
-                client.messageHandler();
-            } else {
-                client.sendOrder(null);
-                client.messageHandler();
+            for (int i = 0; i < orders; ++i) {
+                int id = client.sendOrder(null);
             }
+
+            client.messageHandler();
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();

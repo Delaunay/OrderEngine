@@ -1,5 +1,6 @@
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.concurrent.TimeUnit;
 
 public class Util {
 
@@ -31,4 +32,13 @@ public class Util {
     static public void print(String message){
         System.out.println(message);
     }
+
+    // We dont really care if waiting fails
+    static public void wait(int i){
+        try {
+            TimeUnit.MILLISECONDS.sleep(i);
+        } catch (InterruptedException e) {}
+    }
+
+
 }

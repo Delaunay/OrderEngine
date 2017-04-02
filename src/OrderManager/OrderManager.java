@@ -73,16 +73,10 @@ public class OrderManager {
 	}
 
 	public void run(){
+        long start = System.currentTimeMillis();
+        long end = start;
+
 		while(true){
-			// ----------------------------------------------------------------
-
-			/*/System.gc();
-			Runtime rt = Runtime.getRuntime();
-			long memory = (rt.totalMemory() - rt.freeMemory()) / 1024 / 1024;
-
-			print("    Orders: " + orders.size());
-			print("    Memory: " + memory + " MB ");
-			//*/
 
 			try {
 				runOnce();
@@ -101,6 +95,18 @@ public class OrderManager {
 				TimeUnit.MILLISECONDS.sleep(1); // Don't use 100% CPU
 			} catch (InterruptedException e) {
 			}
+
+            // Print the summary from time to time
+            end = System.currentTimeMillis();
+            if (end - start > 1000){
+                /*/System.gc();
+			    Runtime rt = Runtime.getRuntime();
+                long memory = (rt.totalMemory() - rt.freeMemory()) / 1024 / 1024;
+                print("    Memory: " + memory + " MB ");
+                /*/
+                print("    Orders: " + orders.size());
+                start = end;
+            }
 		}
 	}
 

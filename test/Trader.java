@@ -39,7 +39,6 @@ public class Trader extends Thread implements TradeScreen{
             // TODO check not create a new ObjectInputStream each time
             //if (is == null) This does not work
             is = new ObjectInputStream(s);
-            is.close();
 
             api   method  = (api) is.readObject();
             int   id      = is.readInt();
@@ -74,6 +73,7 @@ public class Trader extends Thread implements TradeScreen{
 
         } catch (IOException e) {
             e.printStackTrace();
+            //System.exit(1);
         } catch (InterruptedException e) {
             // We dont care
         } catch (ClassNotFoundException e) {

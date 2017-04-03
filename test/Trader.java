@@ -1,15 +1,14 @@
+import OrderManager.Order;
+import TradeScreen.TradeScreen;
+import Utility.Util;
+
+import javax.net.ServerSocketFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.HashMap;
-
-import javax.net.ServerSocketFactory;
-
-import OrderManager.Order;
-import TradeScreen.TradeScreen;
-import Utility.Util;
 
 public class Trader extends Thread implements TradeScreen{
 	private HashMap<Integer,Order> orders = new HashMap<>();
@@ -22,7 +21,7 @@ public class Trader extends Thread implements TradeScreen{
 	private int 	port;
     public boolean  sleep = true;
 
-	Trader(String name, int port){
+	public Trader(String name, int port){
 		this.setName(name);
 		this.port = port;
 	}

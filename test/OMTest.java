@@ -1,7 +1,10 @@
 import OrderManager.OrderManager;
 import Utility.Util;
 import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 
 import java.io.IOException;
@@ -9,79 +12,93 @@ import java.net.InetSocketAddress;
 
 import static org.junit.Assert.assertEquals;
 
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class OMTest {
 
-    public void print(String message){
+    public OMTest(){
+        try {
+            init();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    static public void print(String message){
         System.out.println(message);
     }
 
-    @Before
-    public void init() throws IOException, InterruptedException {
-        print("init clients");
-        clients = new SampleClient[client_num];
-        client_address = new InetSocketAddress[client_num];
-        for(int i = 0; i < client_num; ++i){
-            clients[i] = new SampleClient();
-            int index = i;
+    @BeforeClass
+    static public void init() throws IOException, InterruptedException {
+        if (!setUpIsDone) {
+            print("init clients");
+            clients = new SampleClient[client_num];
+            client_address = new InetSocketAddress[client_num];
+            for (int i = 0; i < client_num; ++i) {
+                clients[i] = new SampleClient();
+                int index = i;
 
-            // First time connection is blocking...
-            // so we spawn a thread just to connect
-            new Thread(() -> {
-                try {
-                    clients[index].connectToOrderManager(client_port + index);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }).start();
+                // First time connection is blocking...
+                // so we spawn a thread just to connect
+                new Thread(() -> {
+                    try {
+                        clients[index].connectToOrderManager(client_port + index);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }).start();
 
-            client_address[i] = new InetSocketAddress(address, client_port + i);
-        }
-
-        print("init routers");
-        routers = new SampleRouter[router_num];
-        router_address = new InetSocketAddress[router_num];
-        int router_port = client_port + client_num;
-        for(int i = 0; i < client_num; ++i){
-            routers[i] = new SampleRouter("Router " + i, router_port + i);
-            routers[i].sleep = false;
-            int index = i;
-
-            new Thread(() -> {
-                try {
-                    routers[index].connectToOrderManager();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }).start();
-
-            router_address[i] = new InetSocketAddress(address, router_port + i);
-        }
-
-        print("init trader");
-        int trader_port = router_port + client_num;
-        trader = new Trader("Trader James", trader_port);
-        trader.sleep = false;
-
-        new Thread(() -> {
-            try {
-                trader.connectToOrderManager();
-            } catch (IOException e) {
-                e.printStackTrace();
+                client_address[i] = new InetSocketAddress(address, client_port + i);
             }
-        }).start();
 
-        trader_address = new InetSocketAddress(address, trader_port);
+            print("init routers");
+            routers = new SampleRouter[router_num];
+            router_address = new InetSocketAddress[router_num];
+            int router_port = client_port + client_num;
+            for (int i = 0; i < client_num; ++i) {
+                routers[i] = new SampleRouter("Router " + i, router_port + i);
+                routers[i].sleep = false;
+                int index = i;
 
-        marketData = new SampleLiveMarketData();
+                new Thread(() -> {
+                    try {
+                        routers[index].connectToOrderManager();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }).start();
 
-        print("init order manager");
-        order_manager = new OrderManager(
-                router_address,
-                client_address,
-                trader_address,
-                marketData);
-        print("Init done");
-        Util.wait(1000);
+                router_address[i] = new InetSocketAddress(address, router_port + i);
+            }
+
+            print("init trader");
+            int trader_port = router_port + client_num;
+            trader = new Trader("Trader James", trader_port);
+            trader.sleep = false;
+
+            new Thread(() -> {
+                try {
+                    trader.connectToOrderManager();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
+            trader_address = new InetSocketAddress(address, trader_port);
+
+            marketData = new SampleLiveMarketData();
+
+            print("init order manager");
+            order_manager = new OrderManager(
+                    router_address,
+                    client_address,
+                    trader_address,
+                    marketData);
+            print("Init done");
+            Util.wait(1000);
+            setUpIsDone = true;
+        }
     }
 
     public boolean runOnce() throws IOException, ClassNotFoundException, InterruptedException {
@@ -141,15 +158,15 @@ public class OMTest {
 
     // Actors
     // ------------------------------------------------------------------------
-    Trader               trader;
-    OrderManager         order_manager;
-    SampleClient[]       clients;
-    SampleRouter[]       routers;
-    SampleLiveMarketData marketData;
+    static Trader               trader;
+    static OrderManager         order_manager;
+    static SampleClient[]       clients;
+    static SampleRouter[]       routers;
+    static SampleLiveMarketData marketData;
 
-    InetSocketAddress[] client_address;
-    InetSocketAddress[] router_address;
-    InetSocketAddress   trader_address;
+    static InetSocketAddress[] client_address;
+    static InetSocketAddress[] router_address;
+    static InetSocketAddress   trader_address;
 
     // Config
     // ------------------------------------------------------------------------
@@ -157,4 +174,6 @@ public class OMTest {
     final static int client_num  = 3;
     final static int router_num  = 3;
     final static String address  = "localhost";
+
+    private static boolean setUpIsDone = false;
 }

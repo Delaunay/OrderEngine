@@ -1,3 +1,4 @@
+import Utility.Configuration;
 import Utility.Util;
 
 import java.io.IOException;
@@ -21,12 +22,26 @@ public class StandAloneClient {
 
         HashMap<String, String> options = Util.readArgs(args, opt_name);
 
-        int    client_port = 0;
-        String port = options.get("port");
+
+        // Load conf file if any
+        Configuration conf;
+        String conf_file = options.get("config");
+
+        if (conf_file != null)
+            conf = new Configuration(conf_file);
+        else
+            conf = new Configuration();
+
+        // Get client port
+        int client_port = 0;
+        String port     = options.get("port");
 
         if (port != null)
             client_port = Integer.parseInt(port);
+        else
+            client_port = conf.getPort();
 
+        //
         String client_type = options.get("type");
         SampleClient client;
 

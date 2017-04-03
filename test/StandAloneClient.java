@@ -22,7 +22,6 @@ public class StandAloneClient {
 
         HashMap<String, String> options = Util.readArgs(args, opt_name);
 
-
         // Load conf file if any
         Configuration conf;
         String conf_file = options.get("config");

@@ -9,6 +9,7 @@ import javax.net.ServerSocketFactory;
 
 import OrderManager.Order;
 import TradeScreen.TradeScreen;
+import Utility.Util;
 
 public class Trader extends Thread implements TradeScreen{
 	private HashMap<Integer,Order> orders = new HashMap<>();
@@ -19,6 +20,7 @@ public class Trader extends Thread implements TradeScreen{
 
 	private Socket 	omConn;
 	private int 	port;
+    public boolean  sleep = true;
 
 	Trader(String name, int port){
 		this.setName(name);
@@ -33,10 +35,16 @@ public class Trader extends Thread implements TradeScreen{
         System.out.println("T : " + Thread.currentThread().getName() + " calling: " + m);
     }
 
-	public void readMessage() throws IOException, ClassNotFoundException, InterruptedException {
+    public
+    boolean runOnce() throws IOException, ClassNotFoundException, InterruptedException {
+        return readMessage();
+    }
+
+	public
+    boolean readMessage() throws IOException, ClassNotFoundException, InterruptedException {
         if(0 < s.available()){
 
-            // TODO check not create a new ObjectInputStream each time
+            // TODO check hwo to not create a new ObjectInputStream each time if possible
             //if (is == null) This does not work
             is = new ObjectInputStream(s);
 
@@ -52,23 +60,30 @@ public class Trader extends Thread implements TradeScreen{
                 case cross    :    cross(id, order); break;
                 case fill     :     fill(id, order); break;
             }
-        }else{
-            //print("Trader Waiting for data to be available - sleep 1s");
-            Thread.sleep(100);
+            return true;
         }
+        return false;
+    }
+
+    public void connectToOrderManager() throws IOException {
+        omConn = ServerSocketFactory.getDefault().createServerSocket(port).accept();
+        s = omConn.getInputStream();
     }
 
 	public void run(){
 		//OM will connect to us
 		try {
-			omConn = ServerSocketFactory.getDefault().createServerSocket(port).accept();
+			if (omConn == null)
+                connectToOrderManager();
 			
 			//is = new ObjectInputStream(omConn.getInputStream());
             //if i try to create an objectinputstream before we have data it will block
-			s = omConn.getInputStream();
 
 			while(true){
                 readMessage();
+
+                //print("Trader Waiting for data to be available - sleep 1s");
+                Thread.sleep(100);
 			}
 
         } catch (IOException e) {
@@ -97,7 +112,7 @@ public class Trader extends Thread implements TradeScreen{
 	@Override
 	public void newOrder(int id,Order order) throws IOException, InterruptedException {
 		//TODO the order should go in a visual grid, but not needed for test purposes
-		Thread.sleep(2134);
+		wait(2134);
 		orders.put(id, order);
 		acceptOrder(id);
 	}
@@ -121,7 +136,12 @@ public class Trader extends Thread implements TradeScreen{
 	@Override
 	public void price(int id,Order o) throws InterruptedException, IOException {
 		//TODO should update the trade screen
-		Thread.sleep(2134);
+		wait(2134);
 		sliceOrder(id, orders.get(id).sizeRemaining() / 2);
 	}
+
+	public void wait(int millis){
+        if (sleep)
+            Util.wait(millis);
+    }
 }

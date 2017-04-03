@@ -30,7 +30,14 @@ public class SampleClient extends Mock implements Client{
     private Socket 				 omConn; // connection to order manager
     private ObjectInputStream    is;
 
+
+    public SampleClient(){}
+
     public SampleClient(int port) throws IOException{
+        connectToOrderManager(port);
+    }
+
+    public void connectToOrderManager(int port) throws IOException{
         //OM will connect to us
         omConn = new ServerSocket(port).accept();
         System.out.println("SC: OM connected to client port " + port);
@@ -118,7 +125,11 @@ public class SampleClient extends Mock implements Client{
         } */
     }
 
-    public void readMessage() throws IOException, ClassNotFoundException{
+    public boolean runOnce() throws IOException, ClassNotFoundException{
+        return readMessage();
+    }
+
+    public boolean readMessage() throws IOException, ClassNotFoundException{
         while(omConn.getInputStream().available() > 0){
             is = new ObjectInputStream(omConn.getInputStream());
 
@@ -146,7 +157,9 @@ public class SampleClient extends Mock implements Client{
                 case 'F':fullyFilled(message);
             }*/
             show("DONE");
+            return true;
         }
+        return false;
     }
 
     @Override

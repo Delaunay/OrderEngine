@@ -59,19 +59,19 @@ public class OrderManager {
 		connectToTrader(trader);
 		connectToRouters(orderRouters);
 		connectToClients(clients);
-
-		run();
 	}
 
 	void print(String msg){
 		System.out.println("OM: " + Thread.currentThread().getName() + msg);
+		System.out.flush();
 	}
 
 
-	public void runOnce() throws IOException, ClassNotFoundException, InterruptedException{
-		processClientMessages();
-		processRouterMessages();
-		processTraderMessages();
+	/** Return true if some work has been done */
+	public boolean runOnce() throws IOException, ClassNotFoundException, InterruptedException{
+		return processClientMessages()
+            || processRouterMessages()
+            || processTraderMessages();
 	}
 
 	void summary(){
@@ -113,14 +113,15 @@ public class OrderManager {
 
 	// Read Incoming Messages
 	// ------------------------------------------------------------------------
-	public void processClientMessages() throws IOException, ClassNotFoundException {
-		int clientId = 0;
+	public boolean processClientMessages() throws IOException, ClassNotFoundException {
+	    int clientId = 0;
 		Socket client;
+		boolean work_was_done = false;
 
 		for (clientId = 0; clientId < this.clients.length; clientId++) {
 			client = this.clients[clientId];
 
-			if (0 < client.getInputStream().available()) {
+			if (client.getInputStream().available() > 0) {
 				ObjectInputStream is = new ObjectInputStream(client.getInputStream());
 				String method = (String) is.readObject();
 
@@ -131,18 +132,22 @@ public class OrderManager {
 						newOrder(clientId, is.readInt(), (NewOrderSingle) is.readObject());
 						break;
 				}
+				work_was_done = true;
 			}
 		}
+
+		return work_was_done;
 	}
 
-	public void processRouterMessages() throws IOException, ClassNotFoundException{
+	public boolean processRouterMessages() throws IOException, ClassNotFoundException{
 		int routerId;
 		Socket router;
+		boolean work_was_done = false;
 
 		for (routerId = 0; routerId < this.orderRouters.length; routerId++) {
 			router = this.orderRouters[routerId];
 
-			if (0 < router.getInputStream().available()) {
+			if (router.getInputStream().available() > 0) {
 
 				ObjectInputStream is = new ObjectInputStream(router.getInputStream());
 				String method = (String) is.readObject();
@@ -164,13 +169,15 @@ public class OrderManager {
 						newFill(is.readInt(), is.readInt(), is.readInt(), is.readDouble());
 						break;
 				}
+                work_was_done = true;
 			}
 		}
+		return work_was_done;
 	}
 
-	public void processTraderMessages() throws IOException, ClassNotFoundException{
-		if (!(this.trader.getInputStream().available() > 0))
-			return;
+	public boolean processTraderMessages() throws IOException, ClassNotFoundException{
+		if (this.trader.getInputStream().available() <= 0)
+			return false;
 
 		ObjectInputStream is = new ObjectInputStream(this.trader.getInputStream());
 		String method = (String) is.readObject();
@@ -184,6 +191,8 @@ public class OrderManager {
 			case "sliceOrder":
 				sliceOrder(is.readInt(), is.readInt());
 		}
+
+		return true;
 	}
 
 

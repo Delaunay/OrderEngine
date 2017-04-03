@@ -11,6 +11,7 @@ import OrderManager.Order;
 import OrderRouter.Router;
 import Ref.Instrument;
 import Ref.Ric;
+import Utility.Util;
 
 public class SampleRouter extends Thread implements Router {
     private static final Random RANDOM_NUM_GENERATOR = new Random();
@@ -21,6 +22,7 @@ public class SampleRouter extends Thread implements Router {
             new Instrument(new Ric("BT.L"))
     };
 
+    public boolean sleep = true;
     private Socket omConn;
     private int    port;
 
@@ -33,10 +35,16 @@ public class SampleRouter extends Thread implements Router {
         this.port = port;
     }
 
+    public void connectToOrderManager() throws IOException {
+        omConn = ServerSocketFactory.getDefault().createServerSocket(port).accept();
+    }
+
     @Override
     public void run() {
         try {
-            omConn = ServerSocketFactory.getDefault().createServerSocket(port).accept();
+            if (omConn == null)
+                connectToOrderManager();
+
             while (true) {
                 runOnce();
 
@@ -53,7 +61,7 @@ public class SampleRouter extends Thread implements Router {
         }
     }
 
-    private void runOnce() throws IOException, ClassNotFoundException, InterruptedException {
+    public boolean runOnce() throws IOException, ClassNotFoundException, InterruptedException {
         if (0 < omConn.getInputStream().available()) {
             is = new ObjectInputStream(omConn.getInputStream());
 
@@ -77,7 +85,9 @@ public class SampleRouter extends Thread implements Router {
                             is.readInt());
                     break;
             }
+            return true;
         }
+        return false;
     }
 
     @Override
@@ -87,7 +97,7 @@ public class SampleRouter extends Thread implements Router {
         int    fillSize  =  getFillSize(i, size);
         double fillPrice = getFillPrice(i, size);
 
-        Thread.sleep(42);
+        wait(42);
 
         os = new ObjectOutputStream(omConn.getOutputStream());
             os.writeObject("newFill");
@@ -130,5 +140,10 @@ public class SampleRouter extends Thread implements Router {
 
     void print(String msg) {
         System.out.println("R : " + msg);
+    }
+
+    public void wait(int millis){
+        if (sleep)
+            Util.wait(millis);
     }
 }

@@ -8,6 +8,8 @@ import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
+
 import org.apache.log4j.LogManager;
 
 import Database.Database;
@@ -19,7 +21,7 @@ import org.apache.log4j.Logger;
 
 import Utility.Util;
 
-import static org.apache.log4j.Level.DEBUG;
+
 
 
 /**
@@ -62,8 +64,7 @@ public class OrderManager {
 	}
 
 	void print(String msg){
-		System.out.println("OM: " + Thread.currentThread().getName() + msg);
-		System.out.flush();
+		log.info("OM: " + Thread.currentThread().getName() + msg);
 	}
 
 

@@ -12,8 +12,8 @@ public class Main {
 
         //start sample clients
 
-        (new MockClient("Client 1", 2000, 10)).start();
-        (new MockClient("Client 2", 2001, 10)).start();
+        (new MockClient("Client 1", 2000, 10,1000)).start();
+        (new MockClient("Client 2", 2001, 10,1000)).start();
 
         //start sample routers
         (new SampleRouter("Router LSE", 2010)).start();
@@ -40,16 +40,18 @@ public class Main {
 class MockClient extends Thread {
     int port;
     int orders;
+    int milli;
 
-    MockClient(String name, int port, int orders) {
+    MockClient(String name, int port, int orders , int milli) {
         this.port = port;
         this.setName(name);
         this.orders = orders;
+        this.milli  = milli ;
     }
 
     public void run() {
         try {
-            SampleClient client = new SampleClient(port);
+            SampleClient client = new SampleClient(port,milli);
 
             for (int i = 0; i < orders; ++i) {
                 int id = client.sendOrder(null);

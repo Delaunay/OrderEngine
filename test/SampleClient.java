@@ -14,6 +14,10 @@ import Ref.Instrument;
 import Ref.Ric;
 import Utility.Util;
 
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
+
 public class SampleClient extends Mock implements Client{
     private static final Random RANDOM_NUM_GENERATOR = new Random();
     private static final Instrument[] INSTRUMENTS = {
@@ -29,18 +33,35 @@ public class SampleClient extends Mock implements Client{
     private static int 		     id = 0;
     private Socket 				 omConn; // connection to order manager
     private ObjectInputStream    is;
+    private Logger log;
 
+
+
+    private static int milli = 1000;
 
     public SampleClient(){}
 
     public SampleClient(int port) throws IOException{
+        initLog();
         connectToOrderManager(port);
     }
+
+    public SampleClient(int port, int milli) throws IOException{
+        initLog();
+        connectToOrderManager(port);
+        SampleClient.milli = milli;
+
+    }
+    public void initLog(){
+        BasicConfigurator.configure();
+        log = LogManager.getLogger("Debug");
+    }
+
 
     public void connectToOrderManager(int port) throws IOException{
         //OM will connect to us
         omConn = new ServerSocket(port).accept();
-        System.out.println("SC: OM connected to client port " + port);
+        log.info("SC: OM connected to client port " + port);
     }
 
     @Override
@@ -52,7 +73,7 @@ public class SampleClient extends Mock implements Client{
         Instrument instrument = INSTRUMENTS[RANDOM_NUM_GENERATOR.nextInt(INSTRUMENTS.length)];
         NewOrderSingle nos = new NewOrderSingle(size, instid, instrument);
 
-        show("SC: sendOrder: id=" + id + " size=" + size + " instrument=" + INSTRUMENTS[instid].toString());
+        log.info("SC: sendOrder: id=" + id + " size=" + size + " instrument=" + INSTRUMENTS[instid].toString());
 
         OUT_QUEUE.put(id, nos);
 
@@ -117,7 +138,7 @@ public class SampleClient extends Mock implements Client{
 
     /** Print out a summary of the Client, outstanding orders*/
     public void summary(){
-        Util.print(Thread.currentThread().getName() + " has: " + OUT_QUEUE.size() + " outstanding orders");
+        log.info(Thread.currentThread().getName() + " has: " + OUT_QUEUE.size() + " outstanding orders");
 
         /*
         for(Map.Entry item : OUT_QUEUE.entrySet()){
@@ -135,7 +156,7 @@ public class SampleClient extends Mock implements Client{
 
             String fix = (String) is.readObject();
 
-            System.out.println("SC: " + Thread.currentThread().getName() + " received fix message: " + fix);
+            log.info("SC: " + Thread.currentThread().getName() + " received fix message: " + fix);
 
             String[] fixTags=fix.split(";");
 
@@ -156,7 +177,7 @@ public class SampleClient extends Mock implements Client{
                 case 'P':partialFill(message);break;
                 case 'F':fullyFilled(message);
             }*/
-            show("DONE");
+            log.info("DONE");
             return true;
         }
         return false;
@@ -165,10 +186,10 @@ public class SampleClient extends Mock implements Client{
     @Override
     public void messageHandler(){
         // Print the summary from time to time
-        ScheduledPrint sp = new ScheduledPrint(1000, this);
+        ScheduledPrint sp = new ScheduledPrint(milli, this);
 
         // Create a new order every X millisecond
-        ScheduledOrder so = new ScheduledOrder(1000, this);
+        ScheduledOrder so = new ScheduledOrder(milli, this);
 
         try {
             while (true){
@@ -181,7 +202,7 @@ public class SampleClient extends Mock implements Client{
                 TimeUnit.MILLISECONDS.sleep(1);
             }
         } catch (ClassNotFoundException e){
-            show("Received an weird message");
+            log.info("Received an weird message");
 
         } catch (IOException e){
             e.printStackTrace();
@@ -191,7 +212,7 @@ public class SampleClient extends Mock implements Client{
     }
 
     void newOrderSingleAcknowledgement(int OrderId){
-        System.out.println(Thread.currentThread().getName()+" called newOrderSingleAcknowledgement");
+        log.info(Thread.currentThread().getName()+" called newOrderSingleAcknowledgement");
         //do nothing, as not recording so much state in the NOS class at present
     }
 

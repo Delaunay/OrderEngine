@@ -7,10 +7,9 @@ import java.util.HashSet;
 /**
  * Created by user on 4/3/2017.
  */
-public class StandAloneTrader {
-
+public class StandAloneRouter {
     /**
-     *  Build a Trader
+     *  Build a Router
      *      Argument supported:
      *          -port      Specify the port number the OrderManager is going to communicate with us
      *          -name      Specify the name of the trader

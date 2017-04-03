@@ -1,4 +1,5 @@
 import LiveMarketData.LiveMarketData;
+import OrderManager.OrderManager;
 import Utility.Configuration;
 import Utility.Util;
 
@@ -46,7 +47,7 @@ public class StandAloneOM {
             conf = new Configuration();
 
 
-        //OrderManager om;
+        OrderManager om;
         //om = new OrderManager(routers, clients, traders, liveData);
     }
 }

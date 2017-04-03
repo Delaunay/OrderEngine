@@ -38,7 +38,7 @@ public class StandAloneClient {
         if (port != null)
             client_port = Integer.parseInt(port);
         else
-            client_port = conf.getPort();
+            client_port = conf.getPort("client");
 
         //
         String client_type = options.get("type");

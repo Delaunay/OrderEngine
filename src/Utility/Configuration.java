@@ -14,6 +14,9 @@ public class Configuration {
     void init(String config_name){
         // set default properties
         prop.setProperty("port", "2000");
+        prop.setProperty("port-client", "2000");
+        prop.setProperty("port-trader", "2100");
+        prop.setProperty("port-router", "2200");
 
         try {
             FileInputStream config = new FileInputStream(config_name);
@@ -28,6 +31,13 @@ public class Configuration {
         String port = prop.getProperty("port");
         if (port == null)
             return -1;
+        return Integer.parseInt(port);
+    }
+
+    public int getPort(String name){
+        String port = prop.getProperty("port-" + name);
+        if (port == null)
+            return getPort();
         return Integer.parseInt(port);
     }
 

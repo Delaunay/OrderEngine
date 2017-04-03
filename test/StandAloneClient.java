@@ -40,6 +40,8 @@ public class StandAloneClient {
                 client = new RegularClient(client_port);
             else if (client_type.equals("Portfolio"))
                 client = new PortfolioClient(client_port);
+            else if (client_type.equals("Basket"))
+                client = new BasketClient(client_port);
             else // to silence an error
                 client = new SampleClient(client_port);
 

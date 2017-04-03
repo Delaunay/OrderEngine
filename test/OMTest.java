@@ -121,7 +121,7 @@ public class OMTest {
     @Test
     public void nonBlockingNothing() throws IOException, ClassNotFoundException, InterruptedException {
         // We check if all our actors are indeed non blocking
-        // furthermore they, actually, have nothing to do so there is nothing they
+        // furthermore they, actually, have nothing to do, so there is nothing they
         // should block on
         boolean work = runOnce();
         assertEquals(false, work);

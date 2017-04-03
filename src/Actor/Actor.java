@@ -1,25 +1,58 @@
 package Actor;
 
 /**
- * An Actor is an Object that implements a specific Operation
- * 1) receive message m
- * 2) run
- * 3) return new message n
+ * An Actor is an Object that read messages from
+ * an ActorManager and perform an operation and send
+ * back a new message to the Actor Manager
+ * <p>
+ * <pre>
+ *          Actor       Actor          Actor
+ *               \        |           /
+ *                \       |         /
+ *                .-----------------.
+ *                |  Actor  Manager |
+ *                '-----------------'
+ * </pre>
+ * </p>
  */
-public abstract class Actor {
-    public Actor(MessageRouter r) {
-        router = r;
-    }
+public interface Actor {
+    /**
+     * Read a message if any was sent
+     *
+     * @return true if a message was read
+     */
+    public boolean readMessage();
 
-    public boolean isRunnable() {
-        return false;
-    }
 
-    public abstract Message run(Message m);
+    /**
+     * Keep reading messages. Equivalent to:
+     *
+     * <pre>
+     * {@code
+     *      while (true){
+     *          readMessage()
+     *      }
+     * }</pre>
+     */
+    public void runForever();
 
-    void runAndSend(Message m) {
-        router.sendMessage(run(m));
-    }
+    /**
+     * Connect to the Actor manager from/to which the
+     * actor receive/send messages
+     */
+    public void connect(int port);
 
-    private MessageRouter router;
+    /**
+     * Connect to the actor manager but spawn a thread
+     * to wait for a connection to prevent blocking.
+     * Equivalent to:
+     *
+     * <pre>
+     * {@code
+     *      new Thread(() -> {
+     *          connect(port);
+     *      }).start();
+     * }</pre>
+     */
+    public void connect(int port, boolean block);
 }

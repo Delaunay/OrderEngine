@@ -1,19 +1,31 @@
 package Actor;
 
 
-public abstract class Message {
-    /**
-     * returns the actor's ID that sent the message
-     */
-    abstract int from();
+public class Message {
+    // This is an enumeration of all possible operation code (OpCode)
+    // for each defined actor
+    enum Trader{
+        newOrder,
+        acceptOrder,
+        sliceOrder,
+        price
+    }
 
-    /**
-     * returns the actor's ID destination
-     */
-    abstract int to();
+    enum Client{
+        sendOrder,
+        sendCancel,
+        partialFill,
+        fullyFilled,
+        cancelled,
+    }
 
-    /**
-     * returns the type of message being sent
-     */
-    abstract int messageID();
+    enum Router{
+        routeOrder,
+        sendCancel,
+        priceAtSize
+    }
+
+    enum Market{
+        setPrice
+    }
 }

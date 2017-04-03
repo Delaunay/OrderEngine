@@ -8,11 +8,12 @@ import java.util.HashSet;
  * Created by user on 4/3/2017.
  */
 public class StandAloneRouter {
+
     /**
      *  Build a Router
      *      Argument supported:
      *          -port      Specify the port number the OrderManager is going to communicate with us
-     *          -name      Specify the name of the trader
+     *          -name      Specify the name of the router
      *          -config    Specify the configuration file to load
      */
 
@@ -33,24 +34,24 @@ public class StandAloneRouter {
         else
             conf = new Configuration();
 
-        int    trader_port = 0;
+        int    router_port = 0;
         String port = options.get("port");
 
         if (port != null)
-            trader_port = Integer.parseInt(port);
+            router_port = Integer.parseInt(port);
         else
-            trader_port = conf.getPort("trader");
+            router_port = conf.getPort("router");
 
         String name = options.get("name");
 
         if (name == null)
-            name = "James";
+            name = "Router Default";
 
         Trader trader;
 
-        Util.print("Opening trader : " + name + " on [port = " + trader_port + "]");
+        Util.print("Opening router : " + name + " on [port = " + router_port + "]");
 
-        trader = new Trader(name, trader_port);
+        trader = new Trader(name, router_port);
 
         trader.run();
     }

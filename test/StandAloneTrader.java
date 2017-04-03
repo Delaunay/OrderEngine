@@ -45,7 +45,7 @@ public class StandAloneTrader {
         String name = options.get("name");
 
         if (name == null)
-            name = "James";
+            name = "Trader James";
 
         Trader trader;
 

@@ -64,6 +64,4 @@ public class StandAloneClient {
             Util.print("Could not initialize client");
         }
     }
-
-
 }

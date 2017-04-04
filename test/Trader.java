@@ -1,6 +1,10 @@
 import OrderManager.Order;
 import TradeScreen.TradeScreen;
 import Utility.Util;
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 import javax.net.ServerSocketFactory;
 import java.io.IOException;
@@ -21,17 +25,28 @@ public class Trader extends Thread implements TradeScreen{
 	private int 	port;
     public boolean  sleep = true;
 
-	public Trader(String name, int port){
+    private Logger log;
+
+
+    public Trader(String name, int port){
 		this.setName(name);
 		this.port = port;
-	}
+        initLog();
+
+    }
+
+    public void initLog(){
+        //BasicConfigurator.configure();
+        log = LogManager.getLogger("Debug");
+        log.setLevel(Level.WARN);
+    }
 
     public void print(String m){
-        System.out.println("T : " + Thread.currentThread().getName() + " calling: " + m);
+        log.info("T : " + Thread.currentThread().getName() + " calling: " + m);
     }
 
     public void print(api m){
-        System.out.println("T : " + Thread.currentThread().getName() + " calling: " + m);
+        log.info("T : " + Thread.currentThread().getName() + " calling: " + m);
     }
 
     public
@@ -82,7 +97,7 @@ public class Trader extends Thread implements TradeScreen{
                 readMessage();
 
                 //print("Trader Waiting for data to be available - sleep 1s");
-                Thread.sleep(100);
+                //Thread.sleep(10);
 			}
 
         } catch (IOException e) {
@@ -106,12 +121,13 @@ public class Trader extends Thread implements TradeScreen{
     //TODO
     void fill(int id, Order o){
         print("FILL");
+        //orders.remove(id);
     }
 
 	@Override
 	public void newOrder(int id,Order order) throws IOException, InterruptedException {
 		//TODO the order should go in a visual grid, but not needed for test purposes
-		wait(2134);
+		//wait(2134);
 		orders.put(id, order);
 		acceptOrder(id);
 	}
@@ -135,7 +151,7 @@ public class Trader extends Thread implements TradeScreen{
 	@Override
 	public void price(int id,Order o) throws InterruptedException, IOException {
 		//TODO should update the trade screen
-		wait(2134);
+		//wait(2134);
 		sliceOrder(id, orders.get(id).sizeRemaining() / 2);
 	}
 

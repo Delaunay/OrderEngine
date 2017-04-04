@@ -5,26 +5,34 @@ import java.util.logging.Logger;
 
 import LiveMarketData.LiveMarketData;
 import OrderManager.OrderManager;
+import org.apache.log4j.BasicConfigurator;
 
 public class Main {
     public static void main(String[] args) throws IOException {
         System.out.println("TEST: this program tests ordermanager");
+        BasicConfigurator.configure();
 
         //start sample clients
 
-        (new MockClient("Client 1", 2000, 10,1000)).start();
-        (new MockClient("Client 2", 2001, 10,1000)).start();
+        (new MockClient("Client 1", 2000, 10,7)).start();
+        (new MockClient("Client 2", 2001, 10,7)).start();
+        (new MockClient("Client 3", 2002, 10,7)).start();
+        (new MockClient("Client 4", 2003, 10,7)).start();
 
         //start sample routers
         (new SampleRouter("Router LSE", 2010)).start();
         (new SampleRouter("Router BATE", 2011)).start();
+        /*(new SampleRouter("Router LSE2", 2012)).start();
+        (new SampleRouter("Router BATE2", 2013)).start();*/
 
         (new Trader("Trader James", 2020)).start();
 
         //start order manager
         InetSocketAddress[] clients = {
                 new InetSocketAddress("localhost", 2000),
-                new InetSocketAddress("localhost", 2001)};
+                new InetSocketAddress("localhost", 2001),
+                new InetSocketAddress("localhost", 2002),
+                new InetSocketAddress("localhost", 2003)};
 
         InetSocketAddress[] routers = {
                 new InetSocketAddress("localhost", 2010),

@@ -12,6 +12,10 @@ import OrderRouter.Router;
 import Ref.Instrument;
 import Ref.Ric;
 import Utility.Util;
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 public class SampleRouter extends Thread implements Router {
     private static final Random RANDOM_NUM_GENERATOR = new Random();
@@ -29,11 +33,21 @@ public class SampleRouter extends Thread implements Router {
     private ObjectInputStream  is;
     private ObjectOutputStream os;
 
+    private Logger log;
+
 
     public SampleRouter(String name, int port) {
         this.setName(name);
         this.port = port;
+        initLog();
     }
+
+    public void initLog(){
+        //BasicConfigurator.configure();
+        log = LogManager.getLogger("Debug");
+        log.setLevel(Level.WARN);
+    }
+
 
     public void connectToOrderManager() throws IOException {
         omConn = ServerSocketFactory.getDefault().createServerSocket(port).accept();
@@ -48,7 +62,7 @@ public class SampleRouter extends Thread implements Router {
             while (true) {
                 runOnce();
 
-                TimeUnit.MILLISECONDS.sleep(10);
+                //TimeUnit.MILLISECONDS.sleep(10);
             }
         } catch (ClassNotFoundException e) {
             print("Unknown message format, Could not read objectStream");
@@ -97,7 +111,7 @@ public class SampleRouter extends Thread implements Router {
         int    fillSize  =  getFillSize(i, size);
         double fillPrice = getFillPrice(i, size);
 
-        wait(42);
+        //wait(42);
 
         os = new ObjectOutputStream(omConn.getOutputStream());
             os.writeObject("newFill");
@@ -139,7 +153,7 @@ public class SampleRouter extends Thread implements Router {
     }
 
     void print(String msg) {
-        System.out.println("R : " + msg);
+        log.info("R : " + msg);
     }
 
     public void wait(int millis){

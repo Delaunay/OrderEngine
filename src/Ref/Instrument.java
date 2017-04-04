@@ -18,6 +18,10 @@ public class Instrument implements Serializable {
     public String toString() {
         return ric.ric;
     }
+
+    public Ric getRic() {
+        return ric;
+    }
 }
 
 class EqInstrument extends Instrument {

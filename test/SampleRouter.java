@@ -141,11 +141,33 @@ public class SampleRouter extends Thread implements Router {
     // Utilities
     // ------------------------------------------------------------------------
     private double getPriceAtSize(Instrument i, int size) {
-        return 199 * RANDOM_NUM_GENERATOR.nextDouble();
+        double price =0;
+        if(i.getRic().ric == "VOD.L")
+        {
+            price = 230 + (20 * RANDOM_NUM_GENERATOR.nextGaussian());
+        }
+        else if(i.getRic().ric == "BT.L"){
+            price = 330 + (30 * RANDOM_NUM_GENERATOR.nextGaussian());
+        }
+        else{
+            price = 460 + (60 * RANDOM_NUM_GENERATOR.nextGaussian());
+        }
+        return price * size;
     }
 
     private double getFillPrice(Instrument i, int size) {
-        return 199 * RANDOM_NUM_GENERATOR.nextDouble();
+        double price =0;
+        if(i.getRic().ric == "VOD.L")
+        {
+            price = 230 + (20 * RANDOM_NUM_GENERATOR.nextGaussian());
+        }
+        else if(i.getRic().ric == "BT.L"){
+            price = 330 + (30 * RANDOM_NUM_GENERATOR.nextGaussian());
+        }
+        else{
+            price = 460 + (60 * RANDOM_NUM_GENERATOR.nextGaussian());
+        }
+        return price * size;
     }
 
     private int getFillSize(Instrument i, int size) {

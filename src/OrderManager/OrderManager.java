@@ -75,14 +75,36 @@ public class OrderManager {
             || processTraderMessages();
 	}
 
-	void summary(){
+    static long totalMemoryUsage =0;
+	static long memoryCount =0;
+	static long startingTime =System.currentTimeMillis()/1000;
+	static long averageTimePerOrder =0;
+	static long lastOrderSize=0;
+
+
+    void summary(){
 
         System.gc();
         Runtime rt = Runtime.getRuntime();
-        long memory = (rt.totalMemory() - rt.freeMemory()) / 1024 / 1024;
-		log.warn("    Memory: " + memory + " MB ");
+        long memory = (rt.totalMemory() - rt.freeMemory()) / 1024 ;
+        totalMemoryUsage += memory;
+        memoryCount ++;
+        if(orders.size()> 0){
+            long now = System.currentTimeMillis()/1000;
+            long diffOrders = orders.size() - lastOrderSize;
+            lastOrderSize = orders.size();
+            if (now > startingTime){
+                averageTimePerOrder = (diffOrders/(now-startingTime));
+                startingTime = now;
+            }
+            System.out.println(averageTimePerOrder + " average per second" );
+        }
+        long averageMemoryUsage = totalMemoryUsage / memoryCount;
+        System.out.println(averageMemoryUsage + " average KB");
+        log.warn("    Memory: " + memory + " KB ");
 
-		log.warn("    Orders: " + orders.size());
+
+        log.warn("    Orders: " + orders.size());
     }
 
 	public void run(){

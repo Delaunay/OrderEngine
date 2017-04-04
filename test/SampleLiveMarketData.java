@@ -11,7 +11,15 @@ public class SampleLiveMarketData extends Thread implements LiveMarketData {
     private static final Random RANDOM_NUM_GENERATOR = new Random();
 
     public void setPrice(Order o) {
-        o.initialMarketPrice = 199 * RANDOM_NUM_GENERATOR.nextDouble();
+        if(o.instrument.getRic().ric == "VOD.L") {
+            o.initialMarketPrice = 230+ (20 * RANDOM_NUM_GENERATOR.nextGaussian());
+        }
+        else if(o.instrument.getRic().ric == "BT.L"){
+            o.initialMarketPrice = 330 + (30 * RANDOM_NUM_GENERATOR.nextGaussian());
+        }
+        else{
+            o.initialMarketPrice = 460 + (60 * RANDOM_NUM_GENERATOR.nextGaussian());
+        }
     }
 
     @Override

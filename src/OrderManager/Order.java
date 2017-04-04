@@ -53,10 +53,19 @@ public class Order implements Serializable {
     float price() {
         //TODO this is buggy as it doesn't take account of slices. Let them fix it
         float sum = 0;
+        int totalSize =0;
         for (Fill fill : fills) {
             sum += fill.price;
         }
-        return sum / fills.size();
+        totalSize+=fills.size();
+        for (Order c : slices){
+            totalSize += c.sizeFilled();
+            for (Fill f : fills){
+                sum += f.price;
+            }
+        }
+        return sum / (totalSize);
+
     }
 
     void createFill(int size, double price) {

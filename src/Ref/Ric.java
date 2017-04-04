@@ -4,6 +4,8 @@ import java.io.Serializable;
 
 
 public class Ric implements Serializable {
+
+
     public String ric;
 
     /**

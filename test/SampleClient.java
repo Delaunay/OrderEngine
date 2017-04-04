@@ -19,7 +19,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
-public class SampleClient extends Mock implements Client{
+public class SampleClient implements Client{
     private static final Random RANDOM_NUM_GENERATOR = new Random();
     private static final Instrument[] INSTRUMENTS = {
             new Instrument(new Ric("VOD.L")),
@@ -81,7 +81,7 @@ public class SampleClient extends Mock implements Client{
 
         if(omConn.isConnected()){
             ObjectOutputStream os = new ObjectOutputStream(omConn.getOutputStream());
-            os.writeObject("newOrderSingle");
+            os.writeObject(MessageKind.ANSNewOrder);
             //os.writeObject("35=D;"); // is this a delete ?
             os.writeInt(id);
             os.writeObject(nos);
@@ -115,6 +115,10 @@ public class SampleClient extends Mock implements Client{
         OUT_QUEUE.remove(order.clientOrderID);
     }
 
+    public void show(String m){
+        log.debug(m);
+    }
+
     FIXMessage readOrderManagerAnswer(String[] fixTags){
         FIXMessage m = new FIXMessage();
 
@@ -126,8 +130,6 @@ public class SampleClient extends Mock implements Client{
                     break;
                 case "35":
                     m.MsgType=tag_value[1].charAt(0);
-                    if (m.MsgType == 'A')
-                        m.whatToDo = methods.newOrderSingleAcknowledgement;
                     break;
                 case "39":
                     m.OrdStatus = tag_value[1].charAt(0);
@@ -164,12 +166,12 @@ public class SampleClient extends Mock implements Client{
 
             FIXMessage m = readOrderManagerAnswer(fixTags);
 
-            switch(m.whatToDo){
-                case newOrderSingleAcknowledgement:
+            switch(m.MsgType){
+                case 'A':
                     newOrderSingleAcknowledgement(m.OrderId);
                     break;
                 default:
-                    show("Not handled case: " + m.whatToDo + " " + m.OrdStatus);
+                    show("Not handled case: " + " " + m.OrdStatus);
             }
 
             /*message=connection.getMessage();
@@ -218,16 +220,10 @@ public class SampleClient extends Mock implements Client{
         //do nothing, as not recording so much state in the NOS class at present
     }
 
-    enum methods{
-        newOrderSingleAcknowledgement,
-        dontKnow
-    }
-
     class FIXMessage{
         int     OrderId	=	-1;
         char    MsgType;
         int     OrdStatus;
-        methods whatToDo = methods.dontKnow;
     }
 
     static class ScheduledPrint extends Util.ScheduledTask{

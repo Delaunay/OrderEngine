@@ -6,10 +6,15 @@ import OrderManager.Order;
 import Ref.Instrument;
 
 public interface Router {
-    public enum api {
-        routeOrder,
-        sendCancel,
-        priceAtSize
+    public enum MessageKind {
+        // OrderManager -> Router
+        REQPriceAtSize,
+        REQRouteOrder,
+        REQCancel,
+
+        // Router -> OrderManager
+        ANSBestPrice,
+        ANSNewFill,
     }
 
     public void routeOrder(int id, int sliceId, int size, Instrument i)

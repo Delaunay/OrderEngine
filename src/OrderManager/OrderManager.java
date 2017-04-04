@@ -12,6 +12,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 
 
+import OrderClient.Client;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
@@ -25,20 +26,21 @@ import org.apache.log4j.Logger;
 
 import Utility.Util;
 import org.omg.Messaging.SYNC_WITH_TRANSPORT;
+import sun.plugin2.message.Message;
 
 
 /**
  * 			Order Manager listens to
  * 				- Clients
- * 				- TradingEngine (Trader)
+ * 				- TradingEngine (SampleTrader)
  * 				- Routers       (Markets)
  *
- *		Clients -> newOrder -> Trader
+ *		Clients -> newOrder -> SampleTrader
  *
- *		Router -> newFill -> Trader
+ *		Router -> newFill -> SampleTrader
  *			   -> BestPrice -> ReallyRouteOrder -> Router
  *
- *		Trader -> sliceOrder -> Cross -> RouteOrder
+ *		SampleTrader -> sliceOrder -> Cross -> RouteOrder
  *			   -> AcceptOrder -> Client
  */
 public class OrderManager {
@@ -148,12 +150,12 @@ public class OrderManager {
 			while (router.getInputStream().available() > 0) {
 
 				ObjectInputStream is = new ObjectInputStream(router.getInputStream());
-				String method = (String) is.readObject();
+				Router.MessageKind method = (Router.MessageKind) is.readObject();
 
 				print(" calling " + method);
 
 				switch (method) {
-					case "bestPrice":
+					case ANSBestPrice:
 						int OrderId = is.readInt();
 						int SliceId = is.readInt();
 						Order slice = orders.get(OrderId).slices.get(SliceId);
@@ -163,7 +165,7 @@ public class OrderManager {
 							routeOrder(SliceId, slice);
 						break;
 
-					case "newFill":
+					case ANSNewFill:
 						newFill(is.readInt(), is.readInt(), is.readInt(), is.readDouble());
 						break;
 				}
@@ -179,15 +181,15 @@ public class OrderManager {
 
 		while(this.trader.getInputStream().available() > 0) {
 			ObjectInputStream is = new ObjectInputStream(this.trader.getInputStream());
-			String method = (String) is.readObject();
+			TradeScreen.MessageKind method = (TradeScreen.MessageKind) is.readObject();
 
 			print(" calling " + method);
 
 			switch (method) {
-				case "acceptOrder":
+                case ANSAcceptOrder:
 					acceptOrder(is.readInt());
 					break;
-				case "sliceOrder":
+                case ANSSliceOrder:
 					sliceOrder(is.readInt(), is.readInt());
 			}
 		}
@@ -204,7 +206,7 @@ public class OrderManager {
 			os.writeObject("11=" + clientOrderId + ";35=A;39=A;");
 			os.flush();
 
-		sendOrderToTrader(id, orders.get(id), TradeScreen.api.newOrder);
+		sendOrderToTrader(id, orders.get(id), TradeScreen.MessageKind.REQNewOrder);
 		id++;
 	}
 
@@ -266,7 +268,7 @@ public class OrderManager {
 			o.cross(matchingOrder);
 
 			if (sizeBefore != o.sizeRemaining()) {
-				sendOrderToTrader(id, o, TradeScreen.api.cross);
+				sendOrderToTrader(id, o, TradeScreen.MessageKind.REQCross);
 			}
 		}
 	}
@@ -279,7 +281,7 @@ public class OrderManager {
 			Database.write(o);
 		}
 
-		sendOrderToTrader(id, o, TradeScreen.api.fill);
+		sendOrderToTrader(id, o, TradeScreen.MessageKind.REQFill);
 	}
 
 	/** Ask for the best price to each router
@@ -292,7 +294,7 @@ public class OrderManager {
 		for (Socket r : orderRouters) {
 
 			ObjectOutputStream os = new ObjectOutputStream(r.getOutputStream());
-				os.writeObject(Router.api.priceAtSize);
+				os.writeObject(Router.MessageKind.REQPriceAtSize);
 				os.writeInt(id);
 				os.writeInt(sliceId);
 				os.writeObject(order.instrument);
@@ -311,7 +313,7 @@ public class OrderManager {
 		int index = o.size > 0 ? getBestBuyPrice(o) : getBestSellPrice(o);
 
 		ObjectOutputStream os = new ObjectOutputStream(orderRouters[index].getOutputStream());
-			os.writeObject(Router.api.routeOrder);
+			os.writeObject(Router.MessageKind.REQRouteOrder);
 			os.writeInt(o.id);
 			os.writeInt(sliceId);
 			os.writeInt(o.sizeRemaining());
@@ -332,7 +334,7 @@ public class OrderManager {
 
 	private void price(int id, Order o) throws IOException {
 		liveMarketData.setPrice(o);
-		sendOrderToTrader(id, o, TradeScreen.api.price);
+		sendOrderToTrader(id, o, TradeScreen.MessageKind.REQPrice);
 	}
 
 	// Utilities
@@ -406,7 +408,6 @@ public class OrderManager {
 	// Init Script
 	// ----------------------------------------------------------------
 	public void initLog(){
-
 		//BasicConfigurator.configure();
 		log = LogManager.getLogger("Debug");
 		log.setLevel(Level.WARN);
@@ -446,12 +447,12 @@ class clientThread implements Runnable{
 			try {
 
 				ObjectInputStream is = new ObjectInputStream(client.getInputStream());
-				String method = (String) is.readObject();
+				Client.MessageKind method = (Client.MessageKind) is.readObject();
 
 				oM.print(" calling " + method);
 
 				switch (method) {
-					case "newOrderSingle":
+					case ANSNewOrder:
 						oM.newOrder(clientId, is.readInt(), (NewOrderSingle) is.readObject());
 						break;
 				}

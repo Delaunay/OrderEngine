@@ -5,11 +5,16 @@ import java.io.IOException;
 import OrderManager.Order;
 
 public interface TradeScreen {
-    public enum api {
-        newOrder,
-        price,
-        fill,
-        cross
+    public enum MessageKind {
+        // OrderManager -> SampleTrader
+        REQNewOrder,
+        REQPrice,
+        REQFill,
+        REQCross,
+
+        // SampleTrader -> OrderManager
+        ANSAcceptOrder,
+        ANSSliceOrder,
     }
 
     public void newOrder(int id, Order order)

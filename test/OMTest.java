@@ -1,6 +1,5 @@
 import OrderManager.OrderManager;
 import Utility.Util;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
@@ -73,7 +72,7 @@ public class OMTest {
 
             print("init trader");
             int trader_port = router_port + client_num;
-            trader = new Trader("Trader James", trader_port);
+            trader = new SampleTrader("SampleTrader James", trader_port);
             trader.sleep = false;
 
             new Thread(() -> {
@@ -112,7 +111,7 @@ public class OMTest {
         // Slicing
         work = work || order_manager.runOnce();
 
-        // Trader accepts sliced trade and sends confirmation to client
+        // SampleTrader accepts sliced trade and sends confirmation to client
         for(int i = 0; i < client_num; ++i){
             work = work || clients[i].runOnce();
         }
@@ -122,7 +121,7 @@ public class OMTest {
             work = work || routers[i].runOnce();
         }
 
-        // Trader fill orders
+        // SampleTrader fill orders
         work = work || trader.runOnce();
 
         /*/ Client receive Confirmation... or not (not implemented)
@@ -157,7 +156,7 @@ public class OMTest {
 
     // Actors
     // ------------------------------------------------------------------------
-    static Trader               trader;
+    static SampleTrader trader;
     static OrderManager         order_manager;
     static SampleClient[]       clients;
     static SampleRouter[]       routers;

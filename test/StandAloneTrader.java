@@ -10,7 +10,7 @@ import java.util.HashSet;
 public class StandAloneTrader {
 
     /**
-     *  Build a Trader
+     *  Build a SampleTrader
      *      Argument supported:
      *          -port      Specify the port number the OrderManager is going to communicate with us
      *          -name      Specify the name of the trader
@@ -45,13 +45,13 @@ public class StandAloneTrader {
         String name = options.get("name");
 
         if (name == null)
-            name = "Trader James";
+            name = "SampleTrader James";
 
-        Trader trader;
+        SampleTrader trader;
 
         Util.print("Opening trader : " + name + " on [port = " + trader_port + "]");
 
-        trader = new Trader(name, trader_port);
+        trader = new SampleTrader(name, trader_port);
 
         trader.run();
     }

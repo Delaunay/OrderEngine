@@ -1,11 +1,11 @@
 
 
-run/All: run/Client run/Trader run/MarketData run/Router run/OrderManager
+run/All: run/Client run/SampleTrader run/MarketData run/Router run/OrderManager
 
 run/Client:
 	cd bin/; java StandAloneClient &
 
-run/Trader:
+run/SampleTrader:
 	cd bin/; java StandAloneTrader.class &
 
 run/MarketData:

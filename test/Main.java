@@ -6,42 +6,51 @@ import java.util.logging.Logger;
 import LiveMarketData.LiveMarketData;
 import OrderManager.OrderManager;
 import org.apache.log4j.BasicConfigurator;
+import Utility.Configuration;
 
 public class Main {
     public static void main(String[] args) throws IOException {
         System.out.println("TEST: this program tests ordermanager");
         BasicConfigurator.configure();
 
-        //start sample clients
+// Load conf file if any
+        Configuration conf = new Configuration();
+        int delta = 7;
 
-        (new MockClient("Client 1", 2000, 10,7)).start();
-        (new MockClient("Client 2", 2001, 10,7)).start();
-        (new MockClient("Client 3", 2002, 10,7)).start();
-        (new MockClient("Client 4", 2003, 10,7)).start();
+        //start sample clients
+        int client_port = conf.getPort("client");
+        int num_client  = conf.getClientNumber();
+        InetSocketAddress[] clients = new InetSocketAddress[num_client];
+        for(int i  = 0; i < num_client; ++i) {
+            (new MockClient("Client " + i, client_port + i, 10, delta)).start();
+            clients[i] = new InetSocketAddress("localhost", client_port + i);
+        }
 
         //start sample routers
-        (new SampleRouter("Router LSE", 2010)).start();
-        (new SampleRouter("Router BATE", 2011)).start();
-        /*(new SampleRouter("Router LSE2", 2012)).start();
-        (new SampleRouter("Router BATE2", 2013)).start();*/
+        int router_port = client_port + num_client;
+        int num_router  = conf.getRouterNumber();
+        InetSocketAddress[] routers = new InetSocketAddress[num_router];
+        for(int i  = 0; i < num_client; ++i) {
+            (new Thread (new SampleRouter("Router " + i, router_port + i))).start();
+            routers[i] = new InetSocketAddress("localhost", router_port + i);
+        }
 
-        (new Trader("Trader James", 2020)).start();
+        //start sample routers
+        int trader_port = router_port + num_router;
+        (new Thread (new SampleTrader("Trader ", trader_port))).start();
+        InetSocketAddress traders = new InetSocketAddress("localhost", trader_port);
+        /*
+        int num_traders  = 2;
+        InetSocketAddress[] traders = new InetSocketAddress[2];
+        for(int i  = 0; i < num_traders; ++i) {
+            (new Thread (new SampleTrader("Trader " + i, trader_port + i))).start();
+            traders[i] = new InetSocketAddress("localhost", trader_port + i);
+        } */
 
         //start order manager
-        InetSocketAddress[] clients = {
-                new InetSocketAddress("localhost", 2000),
-                new InetSocketAddress("localhost", 2001),
-                new InetSocketAddress("localhost", 2002),
-                new InetSocketAddress("localhost", 2003)};
-
-        InetSocketAddress[] routers = {
-                new InetSocketAddress("localhost", 2010),
-                new InetSocketAddress("localhost", 2011)};
-
-        InetSocketAddress trader = new InetSocketAddress("localhost", 2020);
         LiveMarketData liveMarketData = new SampleLiveMarketData();
 
-        (new MockOM("Order Manager", routers, clients, trader, liveMarketData)).start();
+        (new MockOM("Order Manager", routers, clients, traders, liveMarketData)).start();
     }
 }
 

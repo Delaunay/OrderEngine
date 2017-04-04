@@ -79,20 +79,20 @@ public class SampleRouter extends Thread implements Router {
         if (0 < omConn.getInputStream().available()) {
             is = new ObjectInputStream(omConn.getInputStream());
 
-            Router.api methodName = (Router.api) is.readObject();
+            Router.MessageKind methodName = (Router.MessageKind) is.readObject();
 
             print("Order Router received method call for: " + methodName);
 
             // Order Dispatch
             switch (methodName) {
-                case routeOrder:
+                case REQRouteOrder:
                     routeOrder(is.readInt(),
                             is.readInt(),
                             is.readInt(),
                             (Instrument) is.readObject());
                     break;
 
-                case priceAtSize:
+                case REQPriceAtSize:
                     priceAtSize(is.readInt(),
                             is.readInt(),
                             (Instrument) is.readObject(),
@@ -114,7 +114,7 @@ public class SampleRouter extends Thread implements Router {
         //wait(42);
 
         os = new ObjectOutputStream(omConn.getOutputStream());
-            os.writeObject("newFill");
+            os.writeObject(MessageKind.ANSNewFill);
             os.writeInt(id);
             os.writeInt(sliceId);
             os.writeInt(fillSize);
@@ -125,7 +125,7 @@ public class SampleRouter extends Thread implements Router {
     @Override
     public void priceAtSize(int id, int sliceId, Instrument i, int size) throws IOException {
         os = new ObjectOutputStream(omConn.getOutputStream());
-            os.writeObject("bestPrice");
+            os.writeObject(MessageKind.ANSBestPrice);
             os.writeInt(id);
             os.writeInt(sliceId);
             os.writeDouble(getPriceAtSize(i, size));

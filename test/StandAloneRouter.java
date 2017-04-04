@@ -47,11 +47,11 @@ public class StandAloneRouter {
         if (name == null)
             name = "Router Default";
 
-        Trader trader;
+        SampleTrader trader;
 
         Util.print("Opening router : " + name + " on [port = " + router_port + "]");
 
-        trader = new Trader(name, router_port);
+        trader = new SampleTrader(name, router_port);
 
         trader.run();
     }

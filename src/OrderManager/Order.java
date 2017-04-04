@@ -16,13 +16,14 @@ public class Order implements Serializable {
     int             bestPriceCount;
 
     int                 clientid;
-    ArrayList<Order>    slices;
-    ArrayList<Fill>     fills;
+    //ArrayList<Order>    slices;
+    //ArrayList<Fill>     fills;
     char                OrdStatus = 'A';    //OrdStatus is Fix 39, 'A' is 'Pending New'
 
     public Instrument instrument;
     public double initialMarketPrice;
 
+    /*
     public int sizeRemaining() {
         return size - sizeFilled();
     }
@@ -57,7 +58,7 @@ public class Order implements Serializable {
         for (Fill fill : fills) {
             sum += fill.price;
         }
-        totalSize+=fills.size();
+        totalSize += fills.size();
         for (Order c : slices){
             totalSize += c.sizeFilled();
             for (Fill f : fills){
@@ -77,9 +78,10 @@ public class Order implements Serializable {
         }
     }
 
-    void cross(Order matchingOrder) {
+    static void cross(Order matchingOrder, Order target) {
+        double initialMarketPrice = matchingOrder.initialMarketPrice;
         //pair slices first and then parent
-        for (Order slice : slices) {
+        for (Order slice : target.slices) {
             if (slice.sizeRemaining() == 0) continue;
             //TODO could optimise this to not start at the beginning every time
             for (Order matchingSlice : matchingOrder.slices) {
@@ -109,28 +111,28 @@ public class Order implements Serializable {
             //no point continuing if we didn't fill this slice, as we must already have fully filled the matchingOrder
             if (slice.sizeRemaining() > 0) break;
         }
-        if (sizeRemaining() > 0) {
+        if (target.sizeRemaining() > 0) {
             for (Order matchingSlice : matchingOrder.slices) {
                 int msze = matchingSlice.sizeRemaining();
                 if (msze == 0) continue;
-                int sze = sizeRemaining();
+                int sze = target.sizeRemaining();
                 if (sze <= msze) {
-                    createFill(sze, initialMarketPrice);
+                    target.createFill(sze, initialMarketPrice);
                     matchingSlice.createFill(sze, initialMarketPrice);
                     break;
                 }
                 //sze>msze
-                createFill(msze, initialMarketPrice);
+                target.createFill(msze, initialMarketPrice);
                 matchingSlice.createFill(msze, initialMarketPrice);
             }
-            int sze = sizeRemaining();
+            int sze = target.sizeRemaining();
             int mParent = matchingOrder.sizeRemaining() - matchingOrder.sliceSizes();
             if (sze > 0 && mParent > 0) {
                 if (sze >= mParent) {
-                    createFill(sze, initialMarketPrice);
+                    target.createFill(sze, initialMarketPrice);
                     matchingOrder.createFill(sze, initialMarketPrice);
                 } else {
-                    createFill(mParent, initialMarketPrice);
+                    target.createFill(mParent, initialMarketPrice);
                     matchingOrder.createFill(mParent, initialMarketPrice);
                 }
             }
@@ -139,15 +141,15 @@ public class Order implements Serializable {
 
     void cancel() {
         //state=cancelled
-    }
+    } */
 
     public Order(int clientId, int ClientOrderID, Instrument instrument, int size) {
         this.clientOrderID = ClientOrderID;
         this.size = size;
         this.clientid = clientId;
         this.instrument = instrument;
-        fills = new ArrayList<Fill>();
-        slices = new ArrayList<Order>();
+        //fills = new ArrayList<Fill>();
+        //slices = new ArrayList<Order>();
     }
 }
 

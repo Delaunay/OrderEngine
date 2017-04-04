@@ -6,14 +6,11 @@ import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 
 
 import OrderClient.Client;
-import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 
@@ -23,10 +20,6 @@ import OrderClient.NewOrderSingle;
 import OrderRouter.Router;
 import TradeScreen.TradeScreen;
 import org.apache.log4j.Logger;
-
-import Utility.Util;
-import org.omg.Messaging.SYNC_WITH_TRANSPORT;
-import sun.plugin2.message.Message;
 
 
 /**
@@ -51,9 +44,16 @@ public class OrderManager {
 	private Socket[] 				orderRouters;
 	private Socket[] 				clients;
 	private Logger					log;
+	private InternalCross           internalCross;
 
+	// Stats
+    static long totalMemoryUsage =0;
+    static long memoryCount =0;
+    static long startingTime = System.currentTimeMillis();
+    static long averageTimePerOrder =0;
+    static long lastOrderSize=0;
 
-	public
+    public
 	OrderManager(InetSocketAddress[] orderRouters,
 				 InetSocketAddress[] clients,
 				 InetSocketAddress trader,
@@ -77,13 +77,6 @@ public class OrderManager {
             || processTraderMessages();
 	}
 
-    static long totalMemoryUsage =0;
-	static long memoryCount =0;
-	static long startingTime =System.currentTimeMillis()/1000;
-	static long averageTimePerOrder =0;
-	static long lastOrderSize=0;
-
-
     void summary(){
 
         System.gc();
@@ -92,7 +85,7 @@ public class OrderManager {
         totalMemoryUsage += memory;
         memoryCount ++;
         if(orders.size()> 0){
-            long now = System.currentTimeMillis()/1000;
+            long now = System.currentTimeMillis();
             long diffOrders = orders.size() - lastOrderSize;
             lastOrderSize = orders.size();
             if (now > startingTime){
@@ -156,7 +149,7 @@ public class OrderManager {
 
 		for (clientId = 0; clientId < this.clients.length; clientId++) {
 			client = this.clients[clientId];
-			new Thread(new clientThread(clientId, client, this)).start();
+			new Thread(new ClientThread(clientId, client, this)).start();
 			System.out.println("client ID : "+clientId);
 		}
 	}
@@ -257,7 +250,10 @@ public class OrderManager {
 	}
 
 	public void sliceOrder(int id, int sliceSize) throws IOException {
-		Order o = orders.get(id);
+        Order order = orders.get(id);
+	    internalCross.sliceOrder(order, sliceSize);
+
+	    /*Order o = orders.get(id);
 		if (sliceSize > o.sizeRemaining() - o.sliceSizes()) {
 			print("error sliceSize is bigger than remaining size to be filled on the order");
 			return;
@@ -270,12 +266,15 @@ public class OrderManager {
 
 		int sizeRemaining = o.slices.get(sliceId).sizeRemaining();
 		if (sizeRemaining > 0) {
-			askBestPrice(id, sliceId, sizeRemaining, slice);
-		}
+			askBestPri*=ce(id, sliceId, sizeRemaining, slice);
+		}*/
 	}
 
 	private synchronized void internalCross(int id, Order o) throws IOException {
-		for (Map.Entry<Integer, Order> entry : orders.entrySet()) {
+		internalCross.internalCross(o.instrument);
+
+
+	    /* for (Map.Entry<Integer, Order> entry : orders.entrySet()) {
 			if (entry.getKey() == id)
 				continue;
 
@@ -292,7 +291,7 @@ public class OrderManager {
 			if (sizeBefore != o.sizeRemaining()) {
 				sendOrderToTrader(id, o, TradeScreen.MessageKind.REQCross);
 			}
-		}
+		} */
 	}
 
 	private void newFill(int id, int sliceId, int size, double price) throws IOException {
@@ -303,6 +302,7 @@ public class OrderManager {
 			Database.write(o);
 		}
 
+		// FIXME the trader does not do anything interesting
 		sendOrderToTrader(id, o, TradeScreen.MessageKind.REQFill);
 	}
 
@@ -452,12 +452,12 @@ public class OrderManager {
 }
 
 
-class clientThread implements Runnable{
+class ClientThread implements Runnable{
 	private int clientId;
 	private Socket client;
 	private  OrderManager oM;
 
-	clientThread(int clientId, Socket client, OrderManager oM){
+	ClientThread(int clientId, Socket client, OrderManager oM){
 		this.clientId = clientId;
 		this.client = client;
 		this.oM = oM;

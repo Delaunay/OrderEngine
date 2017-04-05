@@ -38,21 +38,22 @@ public class SampleClient extends Thread implements Client {
     private Logger log;
     private int delta = 1000;
     private int initial_orders = 0;
+    private int port;
 
 
     public SampleClient(){}
 
     public SampleClient(int port) throws IOException{
         initLog();
-        connectToOrderManager(port);
+        this.port=port;
     }
 
     public SampleClient(String name, int port, int milli, int initial_orders_) throws IOException{
         this.setName(name);
         initLog();
-        connectToOrderManager(port);
         delta = milli;
         initial_orders = initial_orders_;
+        this.port = port;
 
     }
     public void initLog(){
@@ -70,7 +71,9 @@ public class SampleClient extends Thread implements Client {
 
     @Override
     public void run(){
+
         try {
+            connectToOrderManager(port);
             for (int i = 0; i < initial_orders; ++i) {
                 sendOrder();
             }
@@ -82,7 +85,7 @@ public class SampleClient extends Thread implements Client {
         }
     }
 
-    public int sendOrder()throws IOException{
+    public int sendOrder() throws IOException{
         int size   = RANDOM_NUM_GENERATOR.nextInt(5000);
         int instid = RANDOM_NUM_GENERATOR.nextInt(3);   // instrument id
 
@@ -93,6 +96,9 @@ public class SampleClient extends Thread implements Client {
 
     @Override
     public int sendOrder(NewOrderSingle nos)throws IOException{
+        if (nos == null){
+            return -1;
+        }
 
         log.info("SC: sendOrder: id=" + id + " size=" + nos.size + " instrument=" + nos.instrument.toString());
 
@@ -278,7 +284,7 @@ public class SampleClient extends Thread implements Client {
         @Override
         public void scheduledJob(){
             try {
-                client.sendOrder(null);
+                client.sendOrder();
             } catch (IOException e) {
                 e.printStackTrace();
             }

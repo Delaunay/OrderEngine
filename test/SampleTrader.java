@@ -149,7 +149,9 @@ public class SampleTrader extends Thread implements TradeScreen{
 	public void price(int id,Order o) throws InterruptedException, IOException {
 		//TODO should update the trade screen
 		//wait(2134);
-		sliceOrder(id, orders.get(id).sizeRemaining() / 2);
+        //System.out.println("id: "+ id);
+        //System.out.println("size: "+ orders.get(id).sizeRemaining());
+		//sliceOrder(id, orders.get(id).sizeRemaining() / 2);
 	}
 
 	public void wait(int millis){

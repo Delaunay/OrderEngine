@@ -119,7 +119,7 @@ public class OrderManager {
 
 	public void run(){
         // Print the summary from time to time
-        ScheduledPrint sp = new ScheduledPrint(10, this);
+        ScheduledPrint sp = new ScheduledPrint(1000, this);
 
 		try {
 			processClientMessages();
@@ -234,6 +234,7 @@ public class OrderManager {
 	// Actions
 	// ----------------------------------------------------------------
 	protected synchronized void newOrder(int clientId, int clientOrderId, NewOrderSingle nos) throws IOException {
+
 		orders.put(id, new PendingOrder(new Order(clientId, clientOrderId, nos.instrument, nos.size)));
 
 		ObjectOutputStream os = new ObjectOutputStream(clients[clientId].getOutputStream());
@@ -521,7 +522,7 @@ class ClientThread implements Runnable{
                         oM.newOrder(clientId, is.readInt(), (NewOrderSingle) is.readObject());
                         break;
                     case ANSCancel:
-                        Order o = oM.orders.get(is.readInt());
+                        //Order o = oM.orders.get(is.readInt());
                         //oM.sendCancel(o,);
                         break;
 				}

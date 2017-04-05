@@ -60,7 +60,7 @@ public class SampleClient extends Thread implements Client {
     public void initLog(){
 
         log = LogManager.getLogger(this.getClass().getName());
-        log.setLevel(HelperObject.logLevel);
+        log.setLevel(Level.INFO);
     }
 
 
@@ -87,7 +87,7 @@ public class SampleClient extends Thread implements Client {
     }
 
     public int sendOrder() throws IOException{
-        int size   = RANDOM_NUM_GENERATOR.nextInt(5000);
+        int size   = 1000; //RANDOM_NUM_GENERATOR.nextInt(5000);
         int instid = RANDOM_NUM_GENERATOR.nextInt(3);   // instrument id
 
         Instrument instrument = INSTRUMENTS[instid];
@@ -141,13 +141,13 @@ public class SampleClient extends Thread implements Client {
     @Override
     public void fullyFilled(Order order){
         log.debug(" FullFill" + order);
-        OUT_QUEUE.remove(order.clientOrderID);
+        OUT_QUEUE.remove(order.id);
     }
 
     @Override
     public void cancelled(Order order){
         log.debug(" Cancelled" + order);
-        OUT_QUEUE.remove(order.clientOrderID);
+        OUT_QUEUE.remove(order.id);
     }
 
     FIXMessage readOrderManagerAnswer(String[] fixTags){

@@ -126,9 +126,9 @@ public class SampleTrader extends Thread implements TradeScreen{
             os.flush();
 	}
 	@Override
-	public void price(int id,Order o) throws IOException {
+	public void price(int id, Order o) throws IOException {
 		//TODO should update the trade screen
 		//wait(2134);
-		//sliceOrder(id, orders.get(id).sizeRemaining() / 2);
+		sliceOrder(id, MockConfig.slice_size);
 	}
 }

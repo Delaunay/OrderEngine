@@ -8,8 +8,9 @@ import org.apache.log4j.Level;
 import java.util.concurrent.TimeUnit;
 
 public class HelperObject {
-    public static Level logLevel = Level.INFO;
+    public static Level logLevel = Level.DEBUG;
     public static int   waitTime = 1;
+
 
     public void info(String m) {    classLog.info (m);  }
     public void error(String m){    classLog.error(m);  }

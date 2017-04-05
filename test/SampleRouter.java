@@ -19,8 +19,6 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
 public class SampleRouter extends Thread implements Router {
-    private static final Random RANDOM_NUM_GENERATOR = new Random();
-
     private static final Instrument[] INSTRUMENTS = {
             new Instrument(new Ric("VOD.L")),
             new Instrument(new Ric("BP.L")),
@@ -133,36 +131,14 @@ public class SampleRouter extends Thread implements Router {
     // Utilities
     // ------------------------------------------------------------------------
     private double getPriceAtSize(Instrument i, int size) {
-        double price =0;
-        if(i.getRic().ric == "VOD.L")
-        {
-            price = 230 + (20 * RANDOM_NUM_GENERATOR.nextGaussian());
-        }
-        else if(i.getRic().ric == "BT.L"){
-            price = 330 + (30 * RANDOM_NUM_GENERATOR.nextGaussian());
-        }
-        else{
-            price = 460 + (60 * RANDOM_NUM_GENERATOR.nextGaussian());
-        }
-        return price * size;
+        return MockConfig.getPriceAtSize(i, size);
     }
 
     private double getFillPrice(Instrument i, int size) {
-        double price =0;
-        if(i.getRic().ric == "VOD.L")
-        {
-            price = 230 + (20 * RANDOM_NUM_GENERATOR.nextGaussian());
-        }
-        else if(i.getRic().ric == "BT.L"){
-            price = 330 + (30 * RANDOM_NUM_GENERATOR.nextGaussian());
-        }
-        else{
-            price = 460 + (60 * RANDOM_NUM_GENERATOR.nextGaussian());
-        }
-        return price * size;
+        return MockConfig.getFillPrice(i, size);
     }
 
     private int getFillSize(Instrument i, int size) {
-        return RANDOM_NUM_GENERATOR.nextInt(size);
+        return MockConfig.getFillSize(i, size);
     }
 }

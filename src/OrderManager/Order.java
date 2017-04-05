@@ -9,8 +9,7 @@ public class Order implements Serializable {
 
     //TODO these should all be longs
     public int      id;
-    public short    orderRouter;
-    public int      clientOrderID;
+    public int      client_order_id;
     int             size;
     double[]        bestPrices;
     int             bestPriceCount;
@@ -34,7 +33,7 @@ public class Order implements Serializable {
     }
 
     public int newSlice(int sliceSize) {
-        slices.add(new Order(id, clientOrderID, instrument, sliceSize));
+        slices.add(new Order(id, id, instrument, sliceSize, this.client_order_id));
         return slices.size() - 1;
     }
 
@@ -141,8 +140,9 @@ public class Order implements Serializable {
         //state=cancelled
     }
 
-    public Order(int clientId, int ClientOrderID, Instrument instrument, int size) {
-        this.clientOrderID = ClientOrderID;
+    public Order(int clientId, int order_id, Instrument instrument, int size, int client_order_id) {
+        this.id = order_id;
+        this.client_order_id = client_order_id;
         this.size = size;
         this.clientid = clientId;
         this.instrument = instrument;

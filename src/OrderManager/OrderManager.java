@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 import OrderClient.Client;
 import Utility.HelperObject;
+import com.sun.org.apache.xpath.internal.operations.Or;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
@@ -56,7 +57,7 @@ import static java.lang.Thread.sleep;
 public class OrderManager extends HelperObject{
 	private static LiveMarketData 	liveMarketData;
 	private HashMap<Integer, PendingOrder> orders = new HashMap<>();
-	private int 					id = 0;
+	private int 					id          = 0;
 	private int                     next_trader = 0;
 	private Socket[]	 		    traders;
 	private Socket[] 				orderRouters;
@@ -69,7 +70,7 @@ public class OrderManager extends HelperObject{
 	long averageTimePerOrder = 0;
 	long lastOrderSize       = 0;
 	long numOrderPerSecond   = 0;
-	double averageCPU          = 0;
+	double averageCPU        = 0;
 
     public
     OrderManager(InetSocketAddress[] routers,
@@ -127,7 +128,7 @@ public class OrderManager extends HelperObject{
         long memory = (rt.totalMemory() - rt.freeMemory()) / 1024 ;
 
         totalMemoryUsage += memory;
-        memoryCount ++;
+        memoryCount += 1;
 
         if(orders.size() > 0){
             long now = System.currentTimeMillis();
@@ -214,6 +215,7 @@ public class OrderManager extends HelperObject{
 					case ANSBestPrice:
 						int OrderId = is.readInt();
 						int SliceId = is.readInt();
+						//debug("====> order_id " + OrderId);
 						Order slice = orders.get(OrderId).order.slices.get(SliceId);
 						slice.bestPrices[routerId] = is.readDouble();
 						slice.bestPriceCount += 1;
@@ -261,7 +263,7 @@ public class OrderManager extends HelperObject{
 	// ----------------------------------------------------------------
 	protected synchronized void newOrder(int clientId, int clientOrderId, NewOrderSingle nos) throws IOException {
 
-		orders.put(id, new PendingOrder(new Order(clientId, clientOrderId, nos.instrument, nos.size)));
+		orders.put(id, new PendingOrder(new Order(clientId, id, nos.instrument, nos.size, clientOrderId)));
 
 		ObjectOutputStream os = new ObjectOutputStream(clients[clientId].getOutputStream());
 			os.writeObject("11=" + clientOrderId + ";35=A;39=A;");
@@ -289,7 +291,7 @@ public class OrderManager extends HelperObject{
 		o.OrdStatus = '0'; // New
 
 		ObjectOutputStream os = new ObjectOutputStream(clients[o.clientid].getOutputStream());
-			os.writeObject("11=" + o.clientOrderID + ";35=A;39=0");
+			os.writeObject("11=" + o.client_order_id + ";35=A;39=0");
 			os.flush();
 
 		price(id, o);
@@ -298,8 +300,8 @@ public class OrderManager extends HelperObject{
 	public void sliceOrder(int id, int sliceSize) throws IOException {
 		Order o = orders.get(id).order;
 		if (sliceSize > o.sizeRemaining() - o.sliceSizes()) {
-			error("error sliceSize is bigger than remaining size to be filled on the order");
-			return;
+			sliceSize = o.sizeRemaining() - o.sliceSizes();
+		    //error("error sliceSize is bigger than remaining size to be filled on the order");
 		}
 
 		int sliceId = o.newSlice(sliceSize);
@@ -335,10 +337,16 @@ public class OrderManager extends HelperObject{
 	}
 
 	private void newFill(int id, int sliceId, int size, double price) throws IOException {
-		Order o = orders.get(id).order;
+        PendingOrder po = orders.get(id);
+
+	    Order o = po.order;
 		o.slices.get(sliceId).createFill(size, price);
 
+		po.slice_num -= 1;
+		po.size_remain -= size;
+
 		if (o.sizeRemaining() == 0) {
+            debug("----> DONE");
 			Database.write(o);
 		}
 
@@ -451,7 +459,6 @@ public class OrderManager extends HelperObject{
     void sendFullFill(Order order, double cost){
 
     }
-
 
 	// Connection
     // ------------------------------------------------------------------------

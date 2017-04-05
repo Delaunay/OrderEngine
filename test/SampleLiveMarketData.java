@@ -1,3 +1,6 @@
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.Random;
 
 import LiveMarketData.LiveMarketData;
@@ -9,6 +12,7 @@ import Ref.Instrument;
 // no event loop
 public class SampleLiveMarketData extends Thread implements LiveMarketData {
     private static final Random RANDOM_NUM_GENERATOR = new Random();
+    private Socket omConn;
 
     public void setPrice(Order o) {
         if(o.instrument.getRic().ric == "VOD.L") {
@@ -20,6 +24,11 @@ public class SampleLiveMarketData extends Thread implements LiveMarketData {
         else{
             o.initialMarketPrice = 460 + (60 * RANDOM_NUM_GENERATOR.nextGaussian());
         }
+    }
+    public void connectToOrderManager(int port) throws IOException {
+        //OM will connect to us
+        omConn = new ServerSocket(port).accept();
+        //log.info("SC: OM connected to live market port " + port);
     }
 
     @Override

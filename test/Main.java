@@ -35,8 +35,9 @@ public class Main {
             routers[i] = new InetSocketAddress("localhost", router_port + i);
         }
 
+        //start sample trader
         int trader_port = router_port + num_router;
-        /*/start sample client
+        int num_traders = conf.getTraderNumber();
         (new Thread (new SampleTrader("Trader ", trader_port))).start();
         InetSocketAddress traders = new InetSocketAddress("localhost", trader_port); */
         //*
@@ -48,6 +49,7 @@ public class Main {
         } //*/
 
         //start order manager
+        int market_port = trader_port + num_traders;
         LiveMarketData liveMarketData = new SampleLiveMarketData();
 
         (new MockOM("Order Manager", routers, clients, traders, liveMarketData)).start();

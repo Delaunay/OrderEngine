@@ -356,13 +356,13 @@ public class OrderManager {
 	}
 
 	// TODO
-	private void sendCancel(Order order, Router orderRouter) {
+	void sendCancel(Order order, Router orderRouter) {
 		// orderRouter.sendCancel(order);
 		// order.orderRouter.writeObject(order);
 	}
 
 	// TODO
-	private void cancelOrder() {
+	void cancelOrder() {
 
 	}
 
@@ -518,8 +518,12 @@ class ClientThread implements Runnable{
 
 				switch (method) {
 					case ANSNewOrder:
-						oM.newOrder(clientId, is.readInt(), (NewOrderSingle) is.readObject());
-						break;
+                        oM.newOrder(clientId, is.readInt(), (NewOrderSingle) is.readObject());
+                        break;
+                    case ANSCancel:
+                        Order o = oM.orders.get(is.readInt());
+                        //oM.sendCancel(o,);
+                        break;
 				}
 
 			}

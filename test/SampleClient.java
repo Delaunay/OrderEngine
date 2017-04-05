@@ -14,6 +14,7 @@ import Ref.Instrument;
 import Ref.Ric;
 import Utility.Util;
 
+import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
@@ -109,10 +110,18 @@ public class SampleClient extends Thread implements Client {
     }
 
     @Override
-    public void sendCancel(int idToCancel){
+    public void sendCancel (int idToCancel) {
         show("SC: sendCancel: id=" + idToCancel);
         if(omConn.isConnected()){
-            //OMconnection.sendMessage("cancel",idToCancel);
+            try {
+                ObjectOutputStream os = new ObjectOutputStream(omConn.getOutputStream());
+                os.writeObject(MessageKind.ANSCancel);
+                os.writeInt(idToCancel);
+                //OMconnection.sendMessage("cancel",idToCancel);
+            }
+            catch (IOException e){
+                e.printStackTrace();
+            }
         }
     }
 

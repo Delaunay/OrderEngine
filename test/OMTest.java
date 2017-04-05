@@ -83,7 +83,17 @@ public class OMTest {
                 }
             }).start();
 
-            trader_address = new InetSocketAddress(address, trader_port);
+            trader_address    = new InetSocketAddress[1];
+            trader_address[0] = new InetSocketAddress(address, trader_port);
+            SampleTrader t = new SampleTrader("Trader 1", trader_port);
+
+            new Thread(() -> {
+                try {
+                    t.connectToOrderManager();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
 
             marketData = new SampleLiveMarketData();
 
@@ -164,7 +174,7 @@ public class OMTest {
 
     static InetSocketAddress[] client_address;
     static InetSocketAddress[] router_address;
-    static InetSocketAddress   trader_address;
+    static InetSocketAddress[] trader_address;
 
     // Config
     // ------------------------------------------------------------------------

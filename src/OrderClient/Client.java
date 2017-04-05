@@ -17,7 +17,7 @@ public interface Client {
         ANSCancel,
     }
     // Outgoing messages
-    int sendOrder(Object par0) throws IOException;
+    int sendOrder(NewOrderSingle nos) throws IOException;
 
     void sendCancel(int id);
 

@@ -22,7 +22,7 @@ public class Main {
         int num_client  = conf.getClientNumber();
         InetSocketAddress[] clients = new InetSocketAddress[num_client];
         for(int i  = 0; i < num_client; ++i) {
-            (new SampleClient("Client " + i, client_port + i, 1, delta)).start();
+            (new SampleClient("Client " + i, client_port + i, 2, delta)).start();
             clients[i] = new InetSocketAddress("localhost", client_port + i);
         }
 

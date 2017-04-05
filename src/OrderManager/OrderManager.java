@@ -3,6 +3,10 @@ package OrderManager;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+
+import com.sun.management.OperatingSystemMXBean;
+
+import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.channels.SocketChannel;
@@ -56,6 +60,14 @@ public class OrderManager {
 	private Socket[] 				clients;
 	private Logger					log;
 
+	long totalMemoryUsage =0;
+	long memoryCount =0;
+	long startingTime =System.currentTimeMillis();
+	long lastTime =System.currentTimeMillis();
+	long averageTimePerOrder =0;
+	long lastOrderSize=0;
+	long numOrderPerSecond = 0;
+
 
 	public
 	OrderManager(InetSocketAddress[] orderRouters,
@@ -87,36 +99,37 @@ public class OrderManager {
             || processTraderMessages();
 	}
 
-    static long totalMemoryUsage =0;
-	static long memoryCount =0;
-	static long startingTime =System.currentTimeMillis()/1000;
-	static long averageTimePerOrder =0;
-	static long lastOrderSize=0;
+	void summary(){
 
-
-    void summary(){
-
+		OperatingSystemMXBean cpuMeasure = (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
         System.gc();
         Runtime rt = Runtime.getRuntime();
         long memory = (rt.totalMemory() - rt.freeMemory()) / 1024 ;
+
         totalMemoryUsage += memory;
         memoryCount ++;
-        if(orders.size()> 0){
-            long now = System.currentTimeMillis()/1000;
+
+        if(orders.size() > 0){
+            long now = System.currentTimeMillis();
             long diffOrders = orders.size() - lastOrderSize;
+
             lastOrderSize = orders.size();
             if (now > startingTime){
-                averageTimePerOrder = (diffOrders/(now-startingTime));
-                startingTime = now;
+                numOrderPerSecond = (diffOrders  * 1000 /(now - lastTime));
+                averageTimePerOrder = orders.size() * 1000 / (now - startingTime);
+                lastTime = now;
             }
-            System.out.println(averageTimePerOrder + " average per second" );
+			log.warn(averageTimePerOrder + " average per second" );
         }
         long averageMemoryUsage = totalMemoryUsage / memoryCount;
-        System.out.println(averageMemoryUsage + " average KB");
+		log.warn(averageMemoryUsage + " average KB");
+
         log.warn("    Memory: " + memory + " KB ");
-
-
         log.warn("    Orders: " + orders.size());
+        log.warn("    Cpu load: "+ cpuMeasure.getProcessCpuLoad() *100 + "%");
+		if(memory > 1048576 ){
+			System.exit(0);
+		}
     }
 
 	public void run(){

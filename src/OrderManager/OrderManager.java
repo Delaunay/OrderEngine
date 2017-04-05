@@ -8,7 +8,9 @@ import com.sun.management.OperatingSystemMXBean;
 
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -82,6 +84,29 @@ public class OrderManager extends HelperObject{
         connectToClients(clients);
     }
 
+    ServerSocketChannel serverSocket;
+
+    /*
+    public void acceptConnection() throws IOException{
+        serverSocket.configureBlocking(false);
+        SocketChannel channel = serverSocket.accept();
+
+        if (channel == null)
+            return;
+
+        Socket con = channel.socket();
+
+        if (con.getInputStream().available() > 0){
+            ObjectInputStream is = new ObjectInputStream(con.getInputStream());
+                ConnectionType type = (ConnectionType) is.readObject();
+                switch(type){
+                    case TraderConnection:  addTrader(con); return;
+                    case ClientConnection:  addClient(con); return;
+                    case RouterConnection:  addRouter(con); return;
+                }
+        }
+    }*/
+
 	public Socket getTrader(){
 	    Socket t = traders[next_trader];
 	    next_trader += 1;
@@ -135,6 +160,11 @@ public class OrderManager extends HelperObject{
         spawnClients();
 
 		while(true){
+            /*
+		    try {
+                acceptConnection();
+            } catch (IOException e){
+            }*/
 
 			try {
 				runOnce();

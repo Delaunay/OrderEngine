@@ -29,6 +29,8 @@ import Utility.Util;
 import org.omg.Messaging.SYNC_WITH_TRANSPORT;
 import sun.plugin2.message.Message;
 
+import static java.lang.Thread.sleep;
+
 
 /**
  * 			Order Manager listens to
@@ -437,7 +439,7 @@ public class OrderManager {
 				s.setKeepAlive(true);
 				return s;
 			} catch (IOException e) {
-				Thread.sleep(1000);
+				sleep(1000);
 				tryCounter++;
 			}
 		}
@@ -526,13 +528,11 @@ class ClientThread implements Runnable{
                         //oM.sendCancel(o,);
                         break;
 				}
+				sleep(1);
 
-			}
-
-			catch(IOException e){
+			} catch(IOException | InterruptedException e){
 				e.printStackTrace();
-			}
-			catch (ClassNotFoundException e) {
+			} catch (ClassNotFoundException e) {
 				e.printStackTrace();
 			}
 		}

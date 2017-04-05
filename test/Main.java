@@ -22,7 +22,7 @@ public class Main {
         int num_client  = conf.getClientNumber();
         InetSocketAddress[] clients = new InetSocketAddress[num_client];
         for(int i  = 0; i < num_client; ++i) {
-            (new SampleClient("Client " + i, client_port + i, 2, delta)).start();
+            (new SampleClient("Client " + i, client_port + i, 1, delta)).start();
             clients[i] = new InetSocketAddress("localhost", client_port + i);
         }
 
@@ -30,7 +30,7 @@ public class Main {
         int router_port = client_port + num_client;
         int num_router  = conf.getRouterNumber();
         InetSocketAddress[] routers = new InetSocketAddress[num_router];
-        for(int i  = 0; i < num_client; ++i) {
+        for(int i  = 0; i < num_router; ++i) {
             (new Thread (new SampleRouter("Router " + i, router_port + i))).start();
             routers[i] = new InetSocketAddress("localhost", router_port + i);
         }
@@ -42,7 +42,7 @@ public class Main {
         InetSocketAddress traders = new InetSocketAddress("localhost", trader_port);
         */
 
-        int num_traders  = 2;
+        int num_traders  = conf.getTraderNumber();
         InetSocketAddress[] traders = new InetSocketAddress[num_traders];
         for(int i  = 0; i < num_traders; ++i) {
             (new Thread (new SampleTrader("Trader " + i, trader_port + i))).start();

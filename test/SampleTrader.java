@@ -94,7 +94,7 @@ public class SampleTrader extends Thread implements TradeScreen{
                 readMessage();
 
                 //print("SampleTrader Waiting for data to be available - sleep 1s");
-                //Thread.sleep(10);
+                Thread.sleep(1);
 			}
 
         } catch (IOException e) {

@@ -62,7 +62,7 @@ public class SampleRouter extends Thread implements Router {
             while (true) {
                 runOnce();
 
-                //TimeUnit.MILLISECONDS.sleep(10);
+                TimeUnit.MILLISECONDS.sleep(1);
             }
         } catch (ClassNotFoundException e) {
             print("Unknown message format, Could not read objectStream");

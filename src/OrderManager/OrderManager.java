@@ -56,17 +56,20 @@ public class OrderManager extends HelperObject{
 	long numOrderPerSecond   = 0;
 	double averageCPU        = 0;
 
-    public
-    OrderManager(InetSocketAddress[] routers,
+    public OrderManager(InetSocketAddress[] routers,
                  InetSocketAddress[] clients,
                  InetSocketAddress[] traders,
-                 LiveMarketData liveData) throws InterruptedException
+                 LiveMarketData liveData)
     {
         initLog(this.getClass().getName());
         liveMarketData = liveData ;
-        connectToTraders(traders);
-        connectToRouters(routers);
-        connectToClients(clients);
+        try {
+            connectToTraders(traders);
+            connectToRouters(routers);
+            connectToClients(clients);
+        } catch (InterruptedException e){
+            debug("Interrupted during connection attempt");
+        }
     }
 
     ServerSocketChannel serverSocket;

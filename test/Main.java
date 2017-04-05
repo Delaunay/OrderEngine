@@ -53,37 +53,10 @@ public class Main {
         int market_port = trader_port + num_traders;
         LiveMarketData liveMarketData = new SampleLiveMarketData();
 
-        (new MockOM("Order Manager", routers, clients, traders, liveMarketData)).start();
+        Thread om = new Thread(new SampleOrderManager(routers, clients, traders, liveMarketData));
+        om.setName("Order Manager");
+        om.start();
     }
 }
 
 
-class MockOM extends Thread {
-    InetSocketAddress[] clients;
-    InetSocketAddress[] routers;
-    InetSocketAddress[] traders;
-    LiveMarketData      liveMarketData;
-
-    MockOM(String name,
-           InetSocketAddress[] routers,
-           InetSocketAddress[] clients,
-           InetSocketAddress[] trader,
-           LiveMarketData liveMarketData)
-    {
-        this.clients = clients;
-        this.routers = routers;
-        this.traders = trader;
-        this.liveMarketData = liveMarketData;
-        this.setName(name);
-    }
-
-    @Override
-    public void run() {
-        try {
-            //In order to debug constructors you can do F5 F7 F5
-            new OrderManager(routers, clients, traders, liveMarketData).run();
-        } catch (InterruptedException ex) {
-            Logger.getLogger(MockOM.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-}

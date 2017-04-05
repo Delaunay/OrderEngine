@@ -50,6 +50,8 @@ public class Configuration {
 
     public int getClientNumber(){   return getNum("client");}
     public int getRouterNumber(){   return getNum("router");}
+    public int getTraderNumber(){   return getNum("trader");}
+
 
     public int getNum(String name){
         String port = prop.getProperty("num-" + name);

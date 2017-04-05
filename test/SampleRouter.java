@@ -45,7 +45,7 @@ public class SampleRouter extends Thread implements Router {
         omConn = ServerSocketFactory.getDefault().createServerSocket(port).accept();
         omConn.setSendBufferSize(HelperObject.socket_buffer);
         omConn.setReceiveBufferSize(HelperObject.socket_buffer);
-        log.info("Connected to OM" + port);
+        log.info("Connected to OM " + port);
     }
 
     @Override

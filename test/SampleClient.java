@@ -75,7 +75,7 @@ public class SampleClient extends Thread implements Client {
         omConn = new ServerSocket(port).accept();
         omConn.setSendBufferSize(HelperObject.socket_buffer);
         omConn.setReceiveBufferSize(HelperObject.socket_buffer);
-        log.info("Connected to OM" + port);
+        log.info("Connected to OM " + port);
     }
 
     @Override

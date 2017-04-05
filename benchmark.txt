@@ -1,0 +1,57 @@
+Benchmarks with client threads
+
+2416 kb
+2343 kb 1424
+3318 kb 458
+3172 kb 891 orders
+2591 kb 1582 orders 287 orders per second
+2266 kb 1697 orders 340 orders per second
+2562 kb 1437 orders 237 orders per second
+2039 kb 1483 orders 551 orders per second
+1918 kb 482 orders 242 orders per second
+1875 kb 1311 orders 358 orders per second
+1965 kb 1203 orders 281 orders per second
+1491 kb 1040 orders 282 orders per second
+1872 kb 902 orders 251 orders per second
+1888 kb 998 orders 294 orders per second
+2265.429 kb average   
+1146.769 average orders
+312.3 average orders per second
+
+
+Original with sleep Benchmarks
+1173 average kb
+4 orders per minute
+
+
+Original w/out trader sleep Benchmarks
+1990 kb 2450 orders 18 orders per second
+1836 kb 2024 orders 20 orders per second
+1913 kb average 
+2237 average orders
+19 orders per second
+
+
+Benchmarks with multiple traders
+8004 kb 21173 orders 1115 orders per second average cpu load 11.634
+7941 kb 21136 orders 1150 orders per second average cpu load 12.727
+8063 kb 21270 orders 1149 orders per second average cpu load 14.233
+7896 kb 21135 orders 1044 orders per second average cpu load 9.393
+8302 kb 20657 orders 1148 orders per second average cpu load 11.773
+8027 kb 21064 orders 1139 orders per second average cpu load 13.783
+7834 kb 20932 orders 1127 orders per second average cpu load 12.302
+7950 kb 20372 orders 1152 orders per second average cpu load 12.907
+8452 kb 20934 orders 1136 orders per second average cpu load 14.471
+8127 kb 21537 orders 1083 orders per second average cpu load 10.362
+8060 kb average
+21021 average orders per benchmark
+1124 orders pe second
+12.359 average cpu load
+
+
+
+
+
+
+
+

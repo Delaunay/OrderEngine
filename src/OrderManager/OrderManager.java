@@ -130,16 +130,19 @@ public class OrderManager extends HelperObject{
         }
 
         long averageMemoryUsage = totalMemoryUsage / memoryCount;
-        averageCPU += cpuMeasure.getProcessCpuLoad();
+        double cpu = cpuMeasure.getProcessCpuLoad();
+        averageCPU += cpu;
 
-        info("       Order: " + orders.size() + "  " + "(AVG " + averageTimePerOrder + ")");
+        info("       Order: " + orders.size() + " \t" + "(AVG: " + averageTimePerOrder + ")");
         info("      Memory: " + memory + " KB (AVG: " + averageMemoryUsage + " KB)");
-        info("    Cpu load: " + averageCPU * 100 / memoryCount + "%");
+        info("    CPU load: " + trunc(cpu * 100) + " \t(AVG: " + trunc(averageCPU * 100 / memoryCount) + "%)");
 
 		if(memory > 1048576 ){
 			System.exit(0);
 		}
     }
+
+
 
     void addNewOrder(PendingNewOrder nos){
         pending_new_orders.add(nos);

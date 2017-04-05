@@ -34,4 +34,8 @@ public class HelperObject {
     }
 
     public static void ignore(){}
+
+    static public double trunc(double a){
+        return ((double) ((int) (a * 100.0)))/100.0;
+    }
 }

@@ -3,6 +3,10 @@ package OrderManager;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+
+import com.sun.management.OperatingSystemMXBean;
+
+import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.channels.SocketChannel;
@@ -56,17 +60,27 @@ public class OrderManager extends HelperObject{
 	private Socket[] 				orderRouters;
 	private Socket[] 				clients;
 
-	public OrderManager(InetSocketAddress[] orderRouters,
-				 InetSocketAddress[] clients,
-				 InetSocketAddress[] traders,
-				 LiveMarketData liveData) throws InterruptedException
-	{
-		initLog(this.getClass().getName());
-		liveMarketData = liveData ;
-		connectToTraders(traders);
-		connectToRouters(orderRouters);
-		connectToClients(clients);
-	}
+	long totalMemoryUsage    = 0;
+	long memoryCount         = 0;
+	long startingTime        = System.currentTimeMillis();
+	long lastTime            = System.currentTimeMillis();
+	long averageTimePerOrder = 0;
+	long lastOrderSize       = 0;
+	long numOrderPerSecond   = 0;
+	double averageCPU          = 0;
+
+    public
+    OrderManager(InetSocketAddress[] routers,
+                 InetSocketAddress[] clients,
+                 InetSocketAddress[] traders,
+                 LiveMarketData liveData) throws InterruptedException
+    {
+        initLog(this.getClass().getName());
+        liveMarketData = liveData ;
+        connectToTraders(traders);
+        connectToRouters(routers);
+        connectToClients(clients);
+    }
 
 	public Socket getTrader(){
 	    Socket t = traders[next_trader];
@@ -81,32 +95,37 @@ public class OrderManager extends HelperObject{
             || processTraderMessages();
 	}
 
-    static long totalMemoryUsage =0;
-	static long memoryCount =0;
-	static long startingTime =System.currentTimeMillis()/1000;
-	static long averageTimePerOrder =0;
-	static long lastOrderSize=0;
-
-
-    void summary(){
+	void summary(){
+		OperatingSystemMXBean cpuMeasure = (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
         System.gc();
         Runtime rt = Runtime.getRuntime();
         long memory = (rt.totalMemory() - rt.freeMemory()) / 1024 ;
+
         totalMemoryUsage += memory;
         memoryCount ++;
+
         if(orders.size() > 0){
-            long now = System.currentTimeMillis()/1000;
+            long now = System.currentTimeMillis();
             long diffOrders = orders.size() - lastOrderSize;
+
             lastOrderSize = orders.size();
             if (now > startingTime){
-                averageTimePerOrder = (diffOrders/(now-startingTime));
-                startingTime = now;
+                numOrderPerSecond = (diffOrders  * 1000 /(now - lastTime));
+                averageTimePerOrder = orders.size() * 1000 / (now - startingTime);
+                lastTime = now;
             }
+
         }
         long averageMemoryUsage = totalMemoryUsage / memoryCount;
+        averageCPU += cpuMeasure.getProcessCpuLoad();
 
-        info("    Memory: " + memory + " KB (AVG: " + averageMemoryUsage + " average KB)");
-        info("    Orders: " + orders.size() + " (AVG/SEC " + averageTimePerOrder + " )");
+        info("       Order: " + orders.size() + "  " + "(AVG " + averageTimePerOrder + ")");
+        info("      Memory: " + memory + " KB (AVG: " + averageMemoryUsage + " KB)");
+        info("    Cpu load: " + averageCPU * 100 / memoryCount + "%");
+
+		if(memory > 1048576 ){
+			System.exit(0);
+		}
     }
 
 	public void run(){

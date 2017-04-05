@@ -344,13 +344,20 @@ public class OrderManager extends HelperObject{
 
 		po.slice_num -= 1;
 		po.size_remain -= size;
+        String message = "11=" + o.client_order_id + ";38=" + size + ";44=" + price;
 
 		if (o.sizeRemaining() == 0) {
-            debug("----> DONE");
+            message = message + ";39=2";
 			Database.write(o);
-		}
+		} else {
+            message = message + ";39=1";
+        }
 
 		sendOrderToTrader(id, o, TradeScreen.MessageKind.REQFill);
+
+        ObjectOutputStream os = new ObjectOutputStream(clients[o.clientid].getOutputStream());
+            os.writeObject(message);
+            os.flush();
 	}
 
 	/** Ask for the best price to each router
@@ -437,6 +444,7 @@ public class OrderManager extends HelperObject{
 
 	// Order Filling
     // ------------------------------------------------------------------------
+    /*
     void sliceFill(int order_id, int size, int price){
 	    PendingOrder order = orders.get(order_id);
             order.size_remain -= size;
@@ -450,15 +458,7 @@ public class OrderManager extends HelperObject{
             // if done tell the client too
             sendFullFill(order.order, order.cost);
         }
-    }
-
-    void sendPartialFill(Order order, int size, double price){
-
-    }
-
-    void sendFullFill(Order order, double cost){
-
-    }
+    } */
 
 	// Connection
     // ------------------------------------------------------------------------

@@ -41,6 +41,14 @@ public class SampleClient extends Thread implements Client {
     private int                  initial_orders = 0;
     private int                  port;
 
+    class FIXMessage{
+        int     OrderId	=	-1;
+        char    MsgType;
+        int     OrdStatus;
+        int     size;
+        double  price;
+    }
+
 
     public SampleClient(){}
 
@@ -156,15 +164,23 @@ public class SampleClient extends Thread implements Client {
         for(int i = 0; i < fixTags.length; i++){
             String[] tag_value = fixTags[i].split("=");
             switch(tag_value[0]){
-                case "11":
+                case "11": // clientOrderID
                     m.OrderId = Integer.parseInt(tag_value[1]);
                     break;
-                case "35":
-                    m.MsgType=tag_value[1].charAt(0);
+                case "35": //
+                    m.MsgType = tag_value[1].charAt(0);
                     break;
-                case "39":
+                case "38":  // size
+                    m.size = Integer.parseInt(tag_value[1]);
+                    break;
+                case "39": // Status
                     m.OrdStatus = tag_value[1].charAt(0);
                     break;
+                case "44": // Price
+                    m.price = Double.parseDouble(tag_value[1]);
+                    break;
+
+
             }
         }
 
@@ -197,25 +213,26 @@ public class SampleClient extends Thread implements Client {
 
             FIXMessage m = readOrderManagerAnswer(fixTags);
 
-            switch(m.MsgType){
-                case 'A':
-                    newOrderSingleAcknowledgement(m.OrderId);
-                    break;
-                default:
-                    log.error("Not handled case: " + " " + m.OrdStatus);
+            switch (m.OrdStatus){
+                case '0': newOrderPending (m); return true;
+                case '1': orderPartialFill(m); return true;
+                case '2': orderfullFill   (m); return true;
             }
 
-            /*message=connection.getMessage();
-            char type;
-            switch(m.type){
-                case 'C':cancelled(message);break;
-                case 'P':partialFill(message);break;
-                case 'F':fullyFilled(message);
-            }*/
             log.debug("DONE");
             return true;
         }
         return false;
+    }
+
+    void newOrderPending(FIXMessage m ){
+        log.info("-----NewOrderPending-----");
+    }
+    void orderPartialFill(FIXMessage m ){
+        log.info("-----PartialFill-----");
+    }
+    void orderfullFill(FIXMessage m ){
+        log.info("-----FullFill-----");
     }
 
     @Override
@@ -247,12 +264,6 @@ public class SampleClient extends Thread implements Client {
     void newOrderSingleAcknowledgement(int OrderId){
         log.debug(Thread.currentThread().getName()+" called newOrderSingleAcknowledgement");
         //do nothing, as not recording so much state in the NOS class at present
-    }
-
-    class FIXMessage{
-        int     OrderId	=	-1;
-        char    MsgType;
-        int     OrdStatus;
     }
 
     static class ScheduledPrint extends Util.ScheduledTask{

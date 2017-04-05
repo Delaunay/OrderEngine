@@ -150,7 +150,8 @@ public class OrderManager extends HelperObject{
 
         debug("PendingOrders: " + size);
 
-        while(pno != null && k < size){
+        // avoid sending too much in one shot so Trader's buffer dont get fill
+        while(pno != null && k < 50){
             try {
                 this.newOrder(pno.client_id, pno.client_order_id, pno.new_order);
             } catch (IOException e){
@@ -487,6 +488,8 @@ public class OrderManager extends HelperObject{
 		while (tryCounter < 600) {
 			try {
 				Socket s = new Socket(location.getHostName(), location.getPort());
+				s.setSendBufferSize(socket_buffer);
+				s.setReceiveBufferSize(socket_buffer);
 				s.setKeepAlive(true);
 				return s;
 			} catch (IOException e) {

@@ -73,7 +73,9 @@ public class SampleClient extends Thread implements Client {
     public void connectToOrderManager(int port) throws IOException{
         //OM will connect to us
         omConn = new ServerSocket(port).accept();
-        log.info("SC: OM connected to client port " + port);
+        omConn.setSendBufferSize(HelperObject.socket_buffer);
+        omConn.setReceiveBufferSize(HelperObject.socket_buffer);
+        log.info("Connected to OM" + port);
     }
 
     @Override

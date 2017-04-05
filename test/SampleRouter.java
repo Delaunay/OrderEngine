@@ -43,6 +43,9 @@ public class SampleRouter extends Thread implements Router {
 
     public void connectToOrderManager() throws IOException {
         omConn = ServerSocketFactory.getDefault().createServerSocket(port).accept();
+        omConn.setSendBufferSize(HelperObject.socket_buffer);
+        omConn.setReceiveBufferSize(HelperObject.socket_buffer);
+        log.info("Connected to OM" + port);
     }
 
     @Override
@@ -65,7 +68,7 @@ public class SampleRouter extends Thread implements Router {
     }
 
     public boolean runOnce() throws IOException, ClassNotFoundException {
-        if (0 < omConn.getInputStream().available()) {
+        while (omConn.getInputStream().available() > 0) {
             is = new ObjectInputStream(omConn.getInputStream());
 
             Router.MessageKind methodName = (Router.MessageKind) is.readObject();

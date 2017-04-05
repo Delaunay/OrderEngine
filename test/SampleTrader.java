@@ -19,10 +19,8 @@ public class SampleTrader extends Thread implements TradeScreen{
     private ObjectInputStream  	is;
     private ObjectOutputStream 	os;
 
-	private Socket 	omConn;
-	private int 	port;
-    public boolean  sleep = true;
-
+	private Socket omConn;
+	private int    port;
     private Logger log;
 
 
@@ -30,7 +28,6 @@ public class SampleTrader extends Thread implements TradeScreen{
 		this.setName(name);
 		this.port = port;
         initLog();
-
     }
 
     public void initLog(){
@@ -45,7 +42,7 @@ public class SampleTrader extends Thread implements TradeScreen{
 
 	public
     boolean readMessage() throws IOException, ClassNotFoundException{
-        if(0 < s.available()){
+        while(s.available() > 0){
             is = new ObjectInputStream(s);
 
             TradeScreen.MessageKind  method  = (TradeScreen.MessageKind) is.readObject();
@@ -66,6 +63,9 @@ public class SampleTrader extends Thread implements TradeScreen{
 
     public void connectToOrderManager() throws IOException {
         omConn = ServerSocketFactory.getDefault().createServerSocket(port).accept();
+        omConn.setSendBufferSize(HelperObject.socket_buffer);
+        omConn.setReceiveBufferSize(HelperObject.socket_buffer);
+        log.info("Connected to OM" + port);
         s = omConn.getInputStream();
     }
 

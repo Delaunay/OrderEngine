@@ -8,26 +8,22 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
-import static java.lang.Thread.sleep;
 
 /**
  * Created by user on 4/5/2017.
  */
 class ClientThread extends HelperObject implements Runnable {
-	private int clientId;
+	private int client_id;
 	private Socket client;
-	private OrderManager oM;
+	private OrderManager order_manager;
 	private ConcurrentLinkedQueue<String> pending_messages;
 
 
 	ClientThread(int clientId, Socket client, OrderManager oM) {
-		this.clientId = clientId;
+		this.client_id = clientId;
 		this.client = client;
-		this.oM = oM;
+		this.order_manager = oM;
 		initLog(this.getClass().getName());
 		pending_messages = new ConcurrentLinkedQueue<>();
 	}
@@ -38,10 +34,11 @@ class ClientThread extends HelperObject implements Runnable {
 
 	void sendMessages(){
 		// send message
-		Iterator<String> item = pending_messages.iterator();
+		int k = 0;
+		int size = pending_messages.size();
+		String message = pending_messages.poll();
 
-		while(item.hasNext()){
-			String message = item.next();
+		while(message != null && k < size){
 			try {
 				ObjectOutputStream os = new ObjectOutputStream(client.getOutputStream());
 				os.writeObject(message);
@@ -49,7 +46,20 @@ class ClientThread extends HelperObject implements Runnable {
 			} catch (IOException e){
 				error("Could not send message to client");
 			}
-			item.remove();
+			k += 1;
+			message = pending_messages.poll();
+		}
+	}
+
+	public static class PendingNewOrder{
+		int client_id;
+		int client_order_id;
+		NewOrderSingle new_order;
+
+		PendingNewOrder(int id, int oid, NewOrderSingle nos){
+			client_id = id;
+			client_order_id = oid;
+			new_order = nos;
 		}
 	}
 
@@ -59,20 +69,17 @@ class ClientThread extends HelperObject implements Runnable {
 			if (pending_messages.size() > 0)
 				sendMessages();
 
-
 			try {
 				ObjectInputStream is = new ObjectInputStream(client.getInputStream());
 				Client.MessageKind method = (Client.MessageKind) is.readObject();
-
-				debug(" calling " + method);
+				//debug(" calling " + method);
 
 				switch (method) {
 					case ANSNewOrder:
-						oM.newOrder(clientId, is.readInt(), (NewOrderSingle) is.readObject());
+						order_manager.addNewOrder(
+								new PendingNewOrder(client_id, is.readInt(), (NewOrderSingle) is.readObject()));
 						break;
 					case ANSCancel:
-						//Order o = oM.orders.get(is.readInt());
-						//oM.sendCancel(o,);
 						break;
 				}
 			} catch (ClassNotFoundException e) {
@@ -80,7 +87,7 @@ class ClientThread extends HelperObject implements Runnable {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-			sleep(1);
+			sleep(10);
 		}
 	}
 }

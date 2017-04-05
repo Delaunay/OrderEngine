@@ -1,11 +1,10 @@
+import LiveMarketData.LiveMarketData;
+import OrderManager.Order;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Random;
-
-import LiveMarketData.LiveMarketData;
-import OrderManager.Order;
-import Ref.Instrument;
 
 //TODO this should really be in its own thread
 // Why ? It is not like it is doing anything...

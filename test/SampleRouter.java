@@ -1,22 +1,16 @@
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.Socket;
-import java.util.Random;
-import java.util.concurrent.TimeUnit;
-
-import javax.net.ServerSocketFactory;
-
-import OrderManager.Order;
 import OrderRouter.Router;
 import Ref.Instrument;
 import Ref.Ric;
 import Utility.HelperObject;
-import Utility.Util;
-import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+
+import javax.net.ServerSocketFactory;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
 
 public class SampleRouter extends Thread implements Router {
     private static final Instrument[] INSTRUMENTS = {
@@ -85,16 +79,15 @@ public class SampleRouter extends Thread implements Router {
                             is.readInt(),
                             is.readInt(),
                             (Instrument) is.readObject());
-                    break;
+                    return true;
 
                 case REQPriceAtSize:
                     priceAtSize(is.readInt(),
                             is.readInt(),
                             (Instrument) is.readObject(),
                             is.readInt());
-                    break;
+                    return true;
             }
-            return true;
         }
         return false;
     }

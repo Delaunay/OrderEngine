@@ -1,5 +1,6 @@
 import OrderManager.OrderManager;
 import Utility.Util;
+import org.apache.log4j.BasicConfigurator;
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
@@ -29,6 +30,7 @@ public class OMTest {
 
     @BeforeClass
     static public void init() throws IOException, InterruptedException {
+        BasicConfigurator.configure();
         if (!setUpIsDone) {
             print("init clients");
             clients = new SampleClient[client_num];
@@ -54,7 +56,7 @@ public class OMTest {
             routers = new SampleRouter[router_num];
             router_address = new InetSocketAddress[router_num];
             int router_port = client_port + client_num;
-            for (int i = 0; i < client_num; ++i) {
+            for (int i = 0; i < router_num; ++i) {
                 routers[i] = new SampleRouter("Router " + i, router_port + i);
                 routers[i].sleep = false;
                 int index = i;
@@ -71,29 +73,23 @@ public class OMTest {
             }
 
             print("init trader");
-            int trader_port = router_port + client_num;
-            trader = new SampleTrader("SampleTrader James", trader_port);
-            trader.sleep = false;
+            traders = new SampleTrader[trader_num];
+            trader_address    = new InetSocketAddress[trader_num];
+            int trader_port = router_port + router_num;
+            for (int i = 0; i < trader_num; ++i) {
+                traders[i] = new SampleTrader("Trader " + i, trader_port + i);
+                int index = i;
 
-            new Thread(() -> {
-                try {
-                    trader.connectToOrderManager();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }).start();
+                new Thread(() -> {
+                    try {
+                        traders[index].connectToOrderManager();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }).start();
 
-            trader_address    = new InetSocketAddress[1];
-            trader_address[0] = new InetSocketAddress(address, trader_port);
-            SampleTrader t = new SampleTrader("Trader 1", trader_port);
-
-            new Thread(() -> {
-                try {
-                    t.connectToOrderManager();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }).start();
+                trader_address[i] = new InetSocketAddress(address, trader_port + i);
+            }
 
             marketData = new SampleLiveMarketData();
 
@@ -106,6 +102,8 @@ public class OMTest {
             print("Init done");
             Util.wait(1000);
             setUpIsDone = true;
+
+            order_manager.spawnClients();
         }
     }
 
@@ -116,7 +114,9 @@ public class OMTest {
         work = work || order_manager.runOnce();
 
         // OM ask trader to accept each order or slice them
-        work = work || trader.runOnce();
+        for(int i = 0; i < trader_num; ++i) {
+            work = work || traders[i].runOnce();
+        }
 
         // Slicing
         work = work || order_manager.runOnce();
@@ -132,12 +132,14 @@ public class OMTest {
         }
 
         // SampleTrader fill orders
-        work = work || trader.runOnce();
+        for(int i = 0; i < trader_num; ++i) {
+            work = work || traders[i].runOnce();
+        }
 
-        /*/ Client receive Confirmation... or not (not implemented)
+        // Client receive Confirmation...
         for(int i = 0; i < client_num; ++i){
             work = work || clients[i].runOnce();
-        } //*/
+        }
         return work;
     }
 
@@ -149,6 +151,7 @@ public class OMTest {
         // furthermore they, actually, have nothing to do, so there is nothing they
         // should block on
         boolean work = runOnce();
+
         assertEquals(false, work);
     }
 
@@ -157,7 +160,7 @@ public class OMTest {
         // Same as before but we are giving some work to process before hand
 
         for(int i = 0; i < client_num; ++i){
-            clients[i].sendOrder(null);
+            clients[i].sendOrder();
         }
 
         boolean work = runOnce();
@@ -166,10 +169,11 @@ public class OMTest {
 
     // Actors
     // ------------------------------------------------------------------------
-    static SampleTrader trader;
+
     static OrderManager         order_manager;
     static SampleClient[]       clients;
     static SampleRouter[]       routers;
+    static SampleTrader[]       traders;
     static SampleLiveMarketData marketData;
 
     static InetSocketAddress[] client_address;
@@ -181,6 +185,7 @@ public class OMTest {
     final static int client_port = 2000;
     final static int client_num  = 3;
     final static int router_num  = 3;
+    final static int trader_num  = 3;
     final static String address  = "localhost";
 
     private static boolean setUpIsDone = false;

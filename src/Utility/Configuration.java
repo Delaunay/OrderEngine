@@ -18,7 +18,7 @@ public class Configuration {
         prop.setProperty("port-trader", "2100");
         prop.setProperty("port-router", "2200");
         prop.setProperty("num-client", "4");
-        prop.setProperty("num-trader", "4");
+        prop.setProperty("num-trader", "2");
         prop.setProperty("num-router", "2");
 
         try {

@@ -1,43 +1,24 @@
 package OrderManager;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-
-import com.sun.management.OperatingSystemMXBean;
-
-import java.lang.management.ManagementFactory;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.TimeUnit;
-
-
-import OrderClient.Client;
-import Utility.HelperObject;
-import com.sun.org.apache.xpath.internal.operations.Or;
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-
 import Database.Database;
 import LiveMarketData.LiveMarketData;
 import OrderClient.NewOrderSingle;
+import OrderManager.ClientThread.PendingNewOrder;
 import OrderRouter.Router;
 import TradeScreen.TradeScreen;
-import org.apache.log4j.Logger;
+import Utility.HelperObject;
+import com.sun.management.OperatingSystemMXBean;
 
-import Utility.Util;
-import org.omg.Messaging.SYNC_WITH_TRANSPORT;
-import sun.plugin2.message.Message;
-
-import static java.lang.Thread.sleep;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.lang.management.ManagementFactory;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.nio.channels.ServerSocketChannel;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 /**
@@ -55,13 +36,16 @@ import static java.lang.Thread.sleep;
  *			   -> AcceptOrder -> Client
  */
 public class OrderManager extends HelperObject{
-	private static LiveMarketData 	liveMarketData;
-	private HashMap<Integer, PendingOrder> orders = new HashMap<>();
+    private ConcurrentHashMap<Integer, PendingOrder> orders = new ConcurrentHashMap<>();
+    private ConcurrentLinkedQueue<PendingNewOrder>   pending_new_orders = new ConcurrentLinkedQueue<>();
+
+    private static LiveMarketData 	liveMarketData;
 	private int 					id          = 0;
 	private int                     next_trader = 0;
 	private Socket[]	 		    traders;
 	private Socket[] 				orderRouters;
 	private Socket[] 		     	clients;
+    private ClientThread[]          clientWorkers;
 
 	long totalMemoryUsage    = 0;
 	long memoryCount         = 0;
@@ -108,7 +92,7 @@ public class OrderManager extends HelperObject{
         }
     }*/
 
-	public Socket getTrader(){
+	public synchronized Socket getTrader(){
 	    Socket t = traders[next_trader];
 	    next_trader += 1;
 	    next_trader %= traders.length;
@@ -140,8 +124,8 @@ public class OrderManager extends HelperObject{
                 averageTimePerOrder = orders.size() * 1000 / (now - startingTime);
                 lastTime = now;
             }
-
         }
+
         long averageMemoryUsage = totalMemoryUsage / memoryCount;
         averageCPU += cpuMeasure.getProcessCpuLoad();
 
@@ -152,6 +136,29 @@ public class OrderManager extends HelperObject{
 		if(memory > 1048576 ){
 			System.exit(0);
 		}
+    }
+
+    void addNewOrder(PendingNewOrder nos){
+        pending_new_orders.add(nos);
+    }
+
+    public void runPendingNewOrders(){
+        // send message
+        int k = 0;
+        int size = pending_new_orders.size();
+        PendingNewOrder pno = pending_new_orders.poll();
+
+        debug("PendingOrders: " + size);
+
+        while(pno != null && k < size){
+            try {
+                this.newOrder(pno.client_id, pno.client_order_id, pno.new_order);
+            } catch (IOException e){
+                error("Could not send message to client");
+            }
+            k += 1;
+            pno = pending_new_orders.poll();
+        }
     }
 
 	public void run(){
@@ -166,6 +173,9 @@ public class OrderManager extends HelperObject{
                 acceptConnection();
             } catch (IOException e){
             }*/
+
+            if (pending_new_orders.size() > 0)
+                runPendingNewOrders();
 
 			try {
 				runOnce();
@@ -187,8 +197,6 @@ public class OrderManager extends HelperObject{
 
 	// Read Incoming Messages
 	// ------------------------------------------------------------------------
-    ClientThread[] clientWorkers;
-
 	public void spawnClients() {
         clientWorkers = new ClientThread[clients.length];
 
@@ -202,7 +210,7 @@ public class OrderManager extends HelperObject{
 
 			debug("client ID : " + clientId);
 		}
-		clients = null;
+		clients = null; // clients socket should never been access by Order Manager ever again
 	}
 
 	public boolean processRouterMessages() throws IOException, ClassNotFoundException{
@@ -281,7 +289,7 @@ public class OrderManager extends HelperObject{
 
 	// Actions
 	// ----------------------------------------------------------------
-	protected synchronized void newOrder(int clientId, int clientOrderId, NewOrderSingle nos) throws IOException {
+	protected void newOrder(int clientId, int clientOrderId, NewOrderSingle nos) throws IOException {
 
 		orders.put(id, new PendingOrder(new Order(clientId, id, nos.instrument, nos.size, clientOrderId)));
 
@@ -290,7 +298,7 @@ public class OrderManager extends HelperObject{
 		id++;
 	}
 
-	private synchronized void sendOrderToTrader(int id, Order o, Object method) throws IOException {
+	private void sendOrderToTrader(int id, Order o, Object method) throws IOException {
 		ObjectOutputStream ost = new ObjectOutputStream(getTrader().getOutputStream());
 
 			ost.writeObject(method);
@@ -299,7 +307,7 @@ public class OrderManager extends HelperObject{
 			ost.flush();
 	}
 
-	public synchronized void acceptOrder(int id) throws IOException {
+	public void acceptOrder(int id) throws IOException {
 		Order o = orders.get(id).order;
 		if (o.OrdStatus != 'A') { // Pending New
 			error("error accepting order that has already been accepted");
@@ -329,7 +337,7 @@ public class OrderManager extends HelperObject{
 		}
 	}
 
-	private synchronized void internalCross(int id, Order o) throws IOException {
+	private void internalCross(int id, Order o) throws IOException {
 		for (Map.Entry<Integer, PendingOrder> entry : orders.entrySet()) {
 			if (entry.getKey() == id)
 				continue;
@@ -363,12 +371,12 @@ public class OrderManager extends HelperObject{
 		if (o.sizeRemaining() == 0) {
             message = message + ";39=2";
 			Database.write(o);
+			debug("------------DONE--------------");
 		} else {
             message = message + ";39=1";
         }
 
 		sendOrderToTrader(id, o, TradeScreen.MessageKind.REQFill);
-
         sendMessageToClient(o.clientid, message);
 	}
 
@@ -497,6 +505,7 @@ public class OrderManager extends HelperObject{
         for (InetSocketAddress add : traders_) {
             traders[i] = connect(add);
             i += 1;
+            info("Connected to Trader: " + i);
         }
 	}
 

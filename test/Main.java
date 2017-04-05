@@ -1,12 +1,12 @@
+import LiveMarketData.LiveMarketData;
+import OrderManager.OrderManager;
+import Utility.Configuration;
+import org.apache.log4j.BasicConfigurator;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import LiveMarketData.LiveMarketData;
-import OrderManager.OrderManager;
-import org.apache.log4j.BasicConfigurator;
-import Utility.Configuration;
 
 public class Main {
     public static void main(String[] args) throws IOException {
@@ -31,7 +31,9 @@ public class Main {
         int num_router  = conf.getRouterNumber();
         InetSocketAddress[] routers = new InetSocketAddress[num_router];
         for(int i  = 0; i < num_router; ++i) {
-            (new Thread (new SampleRouter("Router " + i, router_port + i))).start();
+            Thread t = new Thread (new SampleRouter("Router " + i, router_port + i));
+            t.setName("Router: " + i);
+            t.start();
             routers[i] = new InetSocketAddress("localhost", router_port + i);
         }
 
@@ -45,7 +47,9 @@ public class Main {
         int num_traders  = conf.getTraderNumber();
         InetSocketAddress[] traders = new InetSocketAddress[num_traders];
         for(int i  = 0; i < num_traders; ++i) {
-            (new Thread (new SampleTrader("Trader " + i, trader_port + i))).start();
+            Thread t = new Thread (new SampleTrader("Trader " + i, trader_port + i));
+            t.setName("Trader: " + i);
+            t.start();
             traders[i] = new InetSocketAddress("localhost", trader_port + i);
         }
 
@@ -62,7 +66,7 @@ class MockOM extends Thread {
     InetSocketAddress[] clients;
     InetSocketAddress[] routers;
     InetSocketAddress[] traders;
-    LiveMarketData liveMarketData;
+    LiveMarketData      liveMarketData;
 
     MockOM(String name,
            InetSocketAddress[] routers,

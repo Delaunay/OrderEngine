@@ -1,12 +1,3 @@
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.HashMap;
-import java.util.Random;
-import java.util.concurrent.TimeUnit;
-
 import OrderClient.Client;
 import OrderClient.NewOrderSingle;
 import OrderManager.Order;
@@ -14,12 +5,17 @@ import Ref.Instrument;
 import Ref.Ric;
 import Utility.HelperObject;
 import Utility.Util;
-
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
-import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.HashMap;
+import java.util.Random;
 
 public class SampleClient extends Thread implements Client {
     private static final Random RANDOM_NUM_GENERATOR = new Random();
@@ -50,7 +46,9 @@ public class SampleClient extends Thread implements Client {
     }
 
 
-    public SampleClient(){}
+    public SampleClient(){
+        initLog();
+    }
 
     public SampleClient(int port) throws IOException{
         initLog();
@@ -105,10 +103,6 @@ public class SampleClient extends Thread implements Client {
 
     @Override
     public int sendOrder(NewOrderSingle nos)throws IOException{
-        if (nos == null){
-            return -1;
-        }
-
         log.debug("SC: sendOrder: id=" + id + " size=" + nos.size + " instrument=" + nos.instrument.toString());
 
         OUT_QUEUE.put(id, nos);
@@ -218,9 +212,6 @@ public class SampleClient extends Thread implements Client {
                 case '1': orderPartialFill(m); return true;
                 case '2': orderfullFill   (m); return true;
             }
-
-            log.debug("DONE");
-            return true;
         }
         return false;
     }
@@ -259,11 +250,6 @@ public class SampleClient extends Thread implements Client {
         } catch (IOException e){
             e.printStackTrace();
         }
-    }
-
-    void newOrderSingleAcknowledgement(int OrderId){
-        log.debug(Thread.currentThread().getName()+" called newOrderSingleAcknowledgement");
-        //do nothing, as not recording so much state in the NOS class at present
     }
 
     static class ScheduledPrint extends Util.ScheduledTask{

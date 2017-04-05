@@ -1,7 +1,6 @@
 import OrderManager.Order;
 import TradeScreen.TradeScreen;
 import Utility.HelperObject;
-import Utility.Util;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
@@ -56,12 +55,11 @@ public class SampleTrader extends Thread implements TradeScreen{
             log.debug(method.toString());
 
             switch(method){
-                case REQNewOrder: newOrder(id, order); break;
-                case REQPrice   :    price(id, order); break;
-                case REQCross   :    cross(id, order); break;
-                case REQFill    :     fill(id, order); break;
+                case REQNewOrder: newOrder(id, order); return true;
+                case REQPrice   :    price(id, order); return true;
+                case REQCross   :    cross(id, order); return true;
+                case REQFill    :     fill(id, order); return true;
             }
-            return true;
         }
         return false;
     }

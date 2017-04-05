@@ -1,9 +1,9 @@
 package OrderManager;
 
+import Ref.Instrument;
+
 import java.io.Serializable;
 import java.util.ArrayList;
-
-import Ref.Instrument;
 
 public class Order implements Serializable {
 

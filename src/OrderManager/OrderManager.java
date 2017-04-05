@@ -46,7 +46,7 @@ import sun.plugin2.message.Message;
  */
 public class OrderManager {
 	private static LiveMarketData 	liveMarketData;
-	private HashMap<Integer, Order> orders = new HashMap<Integer, Order>();
+	private HashMap<Integer, PendingOrder> orders = new HashMap<>();
 	private int 					id = 0;
 	private int                     next_trader = 0;
 	private Socket[]	 		    traders;
@@ -78,7 +78,6 @@ public class OrderManager {
 	    next_trader %= traders.length;
 	    return t;
     }
-
 
 	/** Return true if some work has been done */
 	public boolean runOnce() throws IOException, ClassNotFoundException, InterruptedException{
@@ -189,7 +188,7 @@ public class OrderManager {
 					case ANSBestPrice:
 						int OrderId = is.readInt();
 						int SliceId = is.readInt();
-						Order slice = orders.get(OrderId).slices.get(SliceId);
+						Order slice = orders.get(OrderId).order.slices.get(SliceId);
 						slice.bestPrices[routerId] = is.readDouble();
 						slice.bestPriceCount += 1;
 						if (slice.bestPriceCount == slice.bestPrices.length)
@@ -209,7 +208,6 @@ public class OrderManager {
 	public boolean processTraderMessages() throws IOException, ClassNotFoundException{
         boolean work_was_done = false;
 	    for(Socket trader : traders){
-
             if (trader.getInputStream().available() <= 0)
                 continue;
 
@@ -236,13 +234,13 @@ public class OrderManager {
 	// Actions
 	// ----------------------------------------------------------------
 	protected synchronized void newOrder(int clientId, int clientOrderId, NewOrderSingle nos) throws IOException {
-		orders.put(id, new Order(clientId, clientOrderId, nos.instrument, nos.size));
+		orders.put(id, new PendingOrder(new Order(clientId, clientOrderId, nos.instrument, nos.size)));
 
 		ObjectOutputStream os = new ObjectOutputStream(clients[clientId].getOutputStream());
 			os.writeObject("11=" + clientOrderId + ";35=A;39=A;");
 			os.flush();
 
-		sendOrderToTrader(id, orders.get(id), TradeScreen.MessageKind.REQNewOrder);
+		sendOrderToTrader(id, orders.get(id).order, TradeScreen.MessageKind.REQNewOrder);
 		id++;
 	}
 
@@ -256,7 +254,7 @@ public class OrderManager {
 	}
 
 	public synchronized void acceptOrder(int id) throws IOException {
-		Order o = orders.get(id);
+		Order o = orders.get(id).order;
 		if (o.OrdStatus != 'A') { // Pending New
 			print("error accepting order that has already been accepted");
 			return;
@@ -271,7 +269,7 @@ public class OrderManager {
 	}
 
 	public void sliceOrder(int id, int sliceSize) throws IOException {
-		Order o = orders.get(id);
+		Order o = orders.get(id).order;
 		if (sliceSize > o.sizeRemaining() - o.sliceSizes()) {
 			print("error sliceSize is bigger than remaining size to be filled on the order");
 			return;
@@ -289,11 +287,11 @@ public class OrderManager {
 	}
 
 	private synchronized void internalCross(int id, Order o) throws IOException {
-		for (Map.Entry<Integer, Order> entry : orders.entrySet()) {
+		for (Map.Entry<Integer, PendingOrder> entry : orders.entrySet()) {
 			if (entry.getKey() == id)
 				continue;
 
-			Order matchingOrder = entry.getValue();
+			Order matchingOrder = entry.getValue().order;
 
 			if (!(matchingOrder.instrument.equals(o.instrument)
 					&& matchingOrder.initialMarketPrice == o.initialMarketPrice))
@@ -310,7 +308,7 @@ public class OrderManager {
 	}
 
 	private void newFill(int id, int sliceId, int size, double price) throws IOException {
-		Order o = orders.get(id);
+		Order o = orders.get(id).order;
 		o.slices.get(sliceId).createFill(size, price);
 
 		if (o.sizeRemaining() == 0) {
@@ -401,8 +399,35 @@ public class OrderManager {
 		return maxIndex;
 	}
 
+
+	// Order Filling
+    // ------------------------------------------------------------------------
+    void sliceFill(int order_id, int size, int price){
+	    PendingOrder order = orders.get(order_id);
+            order.size_remain -= size;
+            order.slice_num -= 1;
+	        order.cost += size * price;
+
+        // send info about the last fill
+        sendPartialFill(order.order, size, price);
+
+        if (order.size_remain == 0) {
+            // if done tell the client too
+            sendFullFill(order.order, order.cost);
+        }
+    }
+
+    void sendPartialFill(Order order, int size, double price){
+
+    }
+
+    void sendFullFill(Order order, double cost){
+
+    }
+
+
 	// Connection
-	// ----------------------------------------------------------------
+    // ------------------------------------------------------------------------
 	private Socket connect(InetSocketAddress location) throws InterruptedException {
 		int tryCounter = 0;
 		while (tryCounter < 600) {

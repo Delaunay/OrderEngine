@@ -11,6 +11,7 @@ import OrderManager.Order;
 import OrderRouter.Router;
 import Ref.Instrument;
 import Ref.Ric;
+import Utility.HelperObject;
 import Utility.Util;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
@@ -43,7 +44,6 @@ public class SampleRouter extends Thread implements Router {
     }
 
     public void initLog(){
-        //BasicConfigurator.configure();
         log = LogManager.getLogger("Debug");
         log.setLevel(Level.WARN);
     }
@@ -62,26 +62,23 @@ public class SampleRouter extends Thread implements Router {
             while (true) {
                 runOnce();
 
-                TimeUnit.MILLISECONDS.sleep(1);
+                HelperObject.sleep(HelperObject.waitTime);
             }
         } catch (ClassNotFoundException e) {
-            print("Unknown message format, Could not read objectStream");
+            log.error("Unknown message format, Could not read objectStream");
 
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
-        } catch (InterruptedException e) {
-            // We dont really care about InterruptException
         }
     }
 
-    public boolean runOnce() throws IOException, ClassNotFoundException, InterruptedException {
+    public boolean runOnce() throws IOException, ClassNotFoundException {
         if (0 < omConn.getInputStream().available()) {
             is = new ObjectInputStream(omConn.getInputStream());
 
             Router.MessageKind methodName = (Router.MessageKind) is.readObject();
 
-            print("Order Router received method call for: " + methodName);
+            log.debug("Order Router received method call for: " + methodName);
 
             // Order Dispatch
             switch (methodName) {
@@ -105,13 +102,9 @@ public class SampleRouter extends Thread implements Router {
     }
 
     @Override
-    public void routeOrder(int id, int sliceId, int size, Instrument i) throws IOException, InterruptedException { //MockI.show(""+order);
-        //TODO have this similar to the market price of the instrument
-
+    public void routeOrder(int id, int sliceId, int size, Instrument i) throws IOException {
         int    fillSize  =  getFillSize(i, size);
         double fillPrice = getFillPrice(i, size);
-
-        //wait(42);
 
         os = new ObjectOutputStream(omConn.getOutputStream());
             os.writeObject(MessageKind.ANSNewFill);
@@ -135,7 +128,6 @@ public class SampleRouter extends Thread implements Router {
     // TODO
     @Override
     public void sendCancel(int id, int sliceId, int size, Instrument i) {
-        //MockI.show(""+order);
     }
 
     // Utilities
@@ -172,14 +164,5 @@ public class SampleRouter extends Thread implements Router {
 
     private int getFillSize(Instrument i, int size) {
         return RANDOM_NUM_GENERATOR.nextInt(size);
-    }
-
-    void print(String msg) {
-        log.info("R : " + msg);
-    }
-
-    public void wait(int millis){
-        if (sleep)
-            Util.wait(millis);
     }
 }

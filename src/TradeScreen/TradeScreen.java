@@ -18,7 +18,7 @@ public interface TradeScreen {
     }
 
     public void newOrder(int id, Order order)
-            throws IOException, InterruptedException;
+            throws IOException;
 
     public void acceptOrder(int id)
             throws IOException;
@@ -27,5 +27,5 @@ public interface TradeScreen {
             throws IOException;
 
     public void price(int id, Order o)
-            throws InterruptedException, IOException;
+            throws IOException;
 }

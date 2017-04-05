@@ -18,7 +18,7 @@ public interface Router {
     }
 
     public void routeOrder(int id, int sliceId, int size, Instrument i)
-            throws IOException, InterruptedException;
+            throws IOException;
 
     public void sendCancel(int id, int sliceId, int size, Instrument i);
 

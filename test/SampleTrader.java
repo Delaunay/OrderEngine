@@ -1,8 +1,7 @@
 import OrderManager.Order;
 import TradeScreen.TradeScreen;
+import Utility.HelperObject;
 import Utility.Util;
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
@@ -37,33 +36,24 @@ public class SampleTrader extends Thread implements TradeScreen{
 
     public void initLog(){
         //BasicConfigurator.configure();
-        log = LogManager.getLogger("Debug");
-        log.setLevel(Level.WARN);
+        log = LogManager.getLogger(this.getClass().getName());
+        log.setLevel(HelperObject.logLevel);
     }
 
-    public void print(String m){
-        log.info("T : " + Thread.currentThread().getName() + " calling: " + m);
-    }
-
-
-    public
-    boolean runOnce() throws IOException, ClassNotFoundException, InterruptedException {
+    public  boolean runOnce() throws IOException, ClassNotFoundException {
         return readMessage();
     }
 
 	public
-    boolean readMessage() throws IOException, ClassNotFoundException, InterruptedException {
+    boolean readMessage() throws IOException, ClassNotFoundException{
         if(0 < s.available()){
-
-            // TODO check hwo to not create a new ObjectInputStream each time if possible
-            //if (is == null) This does not work
             is = new ObjectInputStream(s);
 
             TradeScreen.MessageKind  method  = (TradeScreen.MessageKind) is.readObject();
             int   id                         = is.readInt();
             Order order                      = (Order) is.readObject();
 
-            print(method.toString());
+            log.debug(method.toString());
 
             switch(method){
                 case REQNewOrder: newOrder(id, order); break;
@@ -86,45 +76,35 @@ public class SampleTrader extends Thread implements TradeScreen{
 		try {
 			if (omConn == null)
                 connectToOrderManager();
-			
-			//is = new ObjectInputStream(omConn.getInputStream());
-            //if i try to create an objectinputstream before we have data it will block
 
 			while(true){
                 readMessage();
-
-                //print("SampleTrader Waiting for data to be available - sleep 1s");
-                Thread.sleep(1);
+                HelperObject.sleep(HelperObject.waitTime);
 			}
 
         } catch (IOException e) {
             e.printStackTrace();
-            //System.exit(1);
-        } catch (InterruptedException e) {
-            // We dont care
         } catch (ClassNotFoundException e) {
-            print("Object Error");
+            log.error("Object Error");
         }
 	}
 
     //      Actions
     // ------------------------------------------------------------------------
 
-    //TODO
+    // TODO
     void cross(int id, Order o){
-        print("CROSS");
+        log.debug("CROSS");
     }
 
-    //TODO
+    // TODO
     void fill(int id, Order o){
-        print("FILL");
-        //orders.remove(id);
+        log.debug("FILL");
     }
 
 	@Override
-	public void newOrder(int id,Order order) throws IOException, InterruptedException {
-		//TODO the order should go in a visual grid, but not needed for test purposes
-		//wait(2134);
+	public void newOrder(int id,Order order) throws IOException{
+		// TODO the order should go in a visual grid, but not needed for test purposes
 		orders.put(id, order);
 		acceptOrder(id);
 	}
@@ -146,16 +126,9 @@ public class SampleTrader extends Thread implements TradeScreen{
             os.flush();
 	}
 	@Override
-	public void price(int id,Order o) throws InterruptedException, IOException {
+	public void price(int id,Order o) throws IOException {
 		//TODO should update the trade screen
 		//wait(2134);
-        //System.out.println("id: "+ id);
-        //System.out.println("size: "+ orders.get(id).sizeRemaining());
 		//sliceOrder(id, orders.get(id).sizeRemaining() / 2);
 	}
-
-	public void wait(int millis){
-        if (sleep)
-            Util.wait(millis);
-    }
 }

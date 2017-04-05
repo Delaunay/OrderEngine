@@ -12,6 +12,7 @@ import OrderClient.NewOrderSingle;
 import OrderManager.Order;
 import Ref.Instrument;
 import Ref.Ric;
+import Utility.HelperObject;
 import Utility.Util;
 
 import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
@@ -35,10 +36,10 @@ public class SampleClient extends Thread implements Client {
     private static int 		     id = 0;
     private Socket 				 omConn; // connection to order manager
     private ObjectInputStream    is;
-    private Logger log;
-    private int delta = 1000;
-    private int initial_orders = 0;
-    private int port;
+    private Logger               log;
+    private int                  delta = 1000;
+    private int                  initial_orders = 0;
+    private int                  port;
 
 
     public SampleClient(){}
@@ -58,8 +59,8 @@ public class SampleClient extends Thread implements Client {
     }
     public void initLog(){
 
-        log = LogManager.getLogger("Debug");
-        log.setLevel(Level.WARN);
+        log = LogManager.getLogger(this.getClass().getName());
+        log.setLevel(HelperObject.logLevel);
     }
 
 
@@ -100,7 +101,7 @@ public class SampleClient extends Thread implements Client {
             return -1;
         }
 
-        log.info("SC: sendOrder: id=" + id + " size=" + nos.size + " instrument=" + nos.instrument.toString());
+        log.debug("SC: sendOrder: id=" + id + " size=" + nos.size + " instrument=" + nos.instrument.toString());
 
         OUT_QUEUE.put(id, nos);
 
@@ -117,7 +118,8 @@ public class SampleClient extends Thread implements Client {
 
     @Override
     public void sendCancel (int idToCancel) {
-        show("SC: sendCancel: id=" + idToCancel);
+        log.debug("SC: sendCancel: id=" + idToCancel);
+
         if(omConn.isConnected()){
             try {
                 ObjectOutputStream os = new ObjectOutputStream(omConn.getOutputStream());
@@ -133,23 +135,19 @@ public class SampleClient extends Thread implements Client {
 
     @Override
     public void partialFill(Order order){
-        show(" PartialFill " + order);
+        log.debug(" PartialFill " + order);
     }
 
     @Override
     public void fullyFilled(Order order){
-        show(" FullFill" + order);
+        log.debug(" FullFill" + order);
         OUT_QUEUE.remove(order.clientOrderID);
     }
 
     @Override
     public void cancelled(Order order){
-        show(" Cancelled" + order);
+        log.debug(" Cancelled" + order);
         OUT_QUEUE.remove(order.clientOrderID);
-    }
-
-    public void show(String m){
-        log.debug(m);
     }
 
     FIXMessage readOrderManagerAnswer(String[] fixTags){
@@ -175,7 +173,7 @@ public class SampleClient extends Thread implements Client {
 
     /** Print out a summary of the Client, outstanding orders*/
     public void summary(){
-        log.info(Thread.currentThread().getName() + " has: " + OUT_QUEUE.size() + " outstanding orders");
+        log.debug(Thread.currentThread().getName() + " has: " + OUT_QUEUE.size() + " outstanding orders");
 
         /*
         for(Map.Entry item : OUT_QUEUE.entrySet()){
@@ -193,7 +191,7 @@ public class SampleClient extends Thread implements Client {
 
             String fix = (String) is.readObject();
 
-            log.info("SC: " + Thread.currentThread().getName() + " received fix message: " + fix);
+            log.debug("SC: " + Thread.currentThread().getName() + " received fix message: " + fix);
 
             String[] fixTags=fix.split(";");
 
@@ -204,7 +202,7 @@ public class SampleClient extends Thread implements Client {
                     newOrderSingleAcknowledgement(m.OrderId);
                     break;
                 default:
-                    show("Not handled case: " + " " + m.OrdStatus);
+                    log.error("Not handled case: " + " " + m.OrdStatus);
             }
 
             /*message=connection.getMessage();
@@ -214,7 +212,7 @@ public class SampleClient extends Thread implements Client {
                 case 'P':partialFill(message);break;
                 case 'F':fullyFilled(message);
             }*/
-            log.info("DONE");
+            log.debug("DONE");
             return true;
         }
         return false;
@@ -236,20 +234,18 @@ public class SampleClient extends Thread implements Client {
                 so.run();
                 sp.run();
 
-                TimeUnit.MILLISECONDS.sleep(1);
+                HelperObject.sleep(HelperObject.waitTime);
             }
         } catch (ClassNotFoundException e){
-            log.info("Received an weird message");
+            log.error("Received an weird message");
 
         } catch (IOException e){
             e.printStackTrace();
-        } catch (InterruptedException e){
-            // dont care
         }
     }
 
     void newOrderSingleAcknowledgement(int OrderId){
-        log.info(Thread.currentThread().getName()+" called newOrderSingleAcknowledgement");
+        log.debug(Thread.currentThread().getName()+" called newOrderSingleAcknowledgement");
         //do nothing, as not recording so much state in the NOS class at present
     }
 

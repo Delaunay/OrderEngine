@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 
 import OrderClient.Client;
+import Utility.HelperObject;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
@@ -46,7 +47,7 @@ import static java.lang.Thread.sleep;
  *		SampleTrader -> sliceOrder -> Cross -> RouteOrder
  *			   -> AcceptOrder -> Client
  */
-public class OrderManager {
+public class OrderManager extends HelperObject{
 	private static LiveMarketData 	liveMarketData;
 	private HashMap<Integer, PendingOrder> orders = new HashMap<>();
 	private int 					id = 0;
@@ -54,24 +55,17 @@ public class OrderManager {
 	private Socket[]	 		    traders;
 	private Socket[] 				orderRouters;
 	private Socket[] 				clients;
-	private Logger					log;
 
-
-	public
-	OrderManager(InetSocketAddress[] orderRouters,
+	public OrderManager(InetSocketAddress[] orderRouters,
 				 InetSocketAddress[] clients,
 				 InetSocketAddress[] traders,
 				 LiveMarketData liveData) throws InterruptedException
 	{
-		initLog();
+		initLog(this.getClass().getName());
 		liveMarketData = liveData ;
 		connectToTraders(traders);
 		connectToRouters(orderRouters);
 		connectToClients(clients);
-	}
-
-	protected void print(String msg){
-		log.info("OM: " + Thread.currentThread().getName() + msg);
 	}
 
 	public Socket getTrader(){
@@ -95,13 +89,12 @@ public class OrderManager {
 
 
     void summary(){
-
         System.gc();
         Runtime rt = Runtime.getRuntime();
         long memory = (rt.totalMemory() - rt.freeMemory()) / 1024 ;
         totalMemoryUsage += memory;
         memoryCount ++;
-        if(orders.size()> 0){
+        if(orders.size() > 0){
             long now = System.currentTimeMillis()/1000;
             long diffOrders = orders.size() - lastOrderSize;
             lastOrderSize = orders.size();
@@ -109,29 +102,18 @@ public class OrderManager {
                 averageTimePerOrder = (diffOrders/(now-startingTime));
                 startingTime = now;
             }
-            System.out.println(averageTimePerOrder + " average per second" );
         }
         long averageMemoryUsage = totalMemoryUsage / memoryCount;
-        System.out.println(averageMemoryUsage + " average KB");
-        log.warn("    Memory: " + memory + " KB ");
 
-
-        log.warn("    Orders: " + orders.size());
+        info("    Memory: " + memory + " KB (AVG: " + averageMemoryUsage + " average KB)");
+        info("    Orders: " + orders.size() + " (AVG/SEC " + averageTimePerOrder + " )");
     }
 
 	public void run(){
         // Print the summary from time to time
         ScheduledPrint sp = new ScheduledPrint(1000, this);
 
-		try {
-			processClientMessages();
-		}
-		catch (ClassNotFoundException e){
-			e.printStackTrace();
-		}
-		catch (IOException e){
-			e.printStackTrace();
-		}
+        spawnClients();
 
 		while(true){
 
@@ -148,26 +130,19 @@ public class OrderManager {
 				break;
 			}
 
-			try {
-				TimeUnit.MILLISECONDS.sleep(1); // Don't use 100% CPU
-			} catch (InterruptedException e) {
-			}
-
             sp.run();
+			sleep(1);
 		}
 	}
 
 	// Read Incoming Messages
 	// ------------------------------------------------------------------------
 
-	public void processClientMessages() throws IOException, ClassNotFoundException {
-	    int clientId = 0;
-		Socket client;
-
-		for (clientId = 0; clientId < this.clients.length; clientId++) {
-			client = this.clients[clientId];
+	public void spawnClients() {
+		for (int clientId = 0; clientId < this.clients.length; clientId++) {
+			Socket client = this.clients[clientId];
 			new Thread(new ClientThread(clientId, client, this)).start();
-			System.out.println("client ID : "+clientId);
+			debug("client ID : " + clientId);
 		}
 	}
 
@@ -184,7 +159,7 @@ public class OrderManager {
 				ObjectInputStream is = new ObjectInputStream(router.getInputStream());
 				Router.MessageKind method = (Router.MessageKind) is.readObject();
 
-				print(" calling " + method);
+				debug(" calling " + method);
 
 				switch (method) {
 					case ANSBestPrice:
@@ -217,7 +192,7 @@ public class OrderManager {
                 ObjectInputStream is = new ObjectInputStream(trader.getInputStream());
                 TradeScreen.MessageKind method = (TradeScreen.MessageKind) is.readObject();
 
-                print(" calling " + method);
+                debug(" calling " + method);
 
                 switch (method) {
                     case ANSAcceptOrder:
@@ -259,7 +234,7 @@ public class OrderManager {
 	public synchronized void acceptOrder(int id) throws IOException {
 		Order o = orders.get(id).order;
 		if (o.OrdStatus != 'A') { // Pending New
-			print("error accepting order that has already been accepted");
+			error("error accepting order that has already been accepted");
 			return;
 		}
 		o.OrdStatus = '0'; // New
@@ -274,7 +249,7 @@ public class OrderManager {
 	public void sliceOrder(int id, int sliceSize) throws IOException {
 		Order o = orders.get(id).order;
 		if (sliceSize > o.sizeRemaining() - o.sliceSizes()) {
-			print("error sliceSize is bigger than remaining size to be filled on the order");
+			error("error sliceSize is bigger than remaining size to be filled on the order");
 			return;
 		}
 
@@ -443,7 +418,7 @@ public class OrderManager {
 				tryCounter++;
 			}
 		}
-		print("Failed to connect to " + location.toString());
+		error("Failed to connect to " + location.toString());
 		return null;
 	}
 
@@ -474,15 +449,6 @@ public class OrderManager {
 		}
 	}
 
-	// Init Script
-	// ----------------------------------------------------------------
-	public void initLog(){
-		//BasicConfigurator.configure();
-		log = LogManager.getLogger("Debug");
-		log.setLevel(Level.WARN);
-	}
-
-
     static class ScheduledPrint extends Utility.Util.ScheduledTask{
         OrderManager manager;
 
@@ -498,43 +464,3 @@ public class OrderManager {
     }
 }
 
-class ClientThread implements Runnable{
-	private int clientId;
-	private Socket client;
-	private  OrderManager oM;
-
-	ClientThread(int clientId, Socket client, OrderManager oM){
-		this.clientId = clientId;
-		this.client = client;
-		this.oM = oM;
-	}
-
-	@Override
-	public void run() {
-		while (true){
-			try {
-
-				ObjectInputStream is = new ObjectInputStream(client.getInputStream());
-				Client.MessageKind method = (Client.MessageKind) is.readObject();
-
-				oM.print(" calling " + method);
-
-				switch (method) {
-					case ANSNewOrder:
-                        oM.newOrder(clientId, is.readInt(), (NewOrderSingle) is.readObject());
-                        break;
-                    case ANSCancel:
-                        //Order o = oM.orders.get(is.readInt());
-                        //oM.sendCancel(o,);
-                        break;
-				}
-				sleep(1);
-
-			} catch(IOException | InterruptedException e){
-				e.printStackTrace();
-			} catch (ClassNotFoundException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-}

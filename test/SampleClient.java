@@ -20,7 +20,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
-public class SampleClient implements Client{
+public class SampleClient extends Thread implements Client {
     private static final Random RANDOM_NUM_GENERATOR = new Random();
     private static final Instrument[] INSTRUMENTS = {
             new Instrument(new Ric("VOD.L")),
@@ -36,10 +36,9 @@ public class SampleClient implements Client{
     private Socket 				 omConn; // connection to order manager
     private ObjectInputStream    is;
     private Logger log;
+    private int delta = 1000;
+    private int initial_orders = 0;
 
-
-
-    private static int milli = 1000;
 
     public SampleClient(){}
 
@@ -48,10 +47,12 @@ public class SampleClient implements Client{
         connectToOrderManager(port);
     }
 
-    public SampleClient(int port, int milli) throws IOException{
+    public SampleClient(String name, int port, int milli, int initial_orders_) throws IOException{
+        this.setName(name);
         initLog();
         connectToOrderManager(port);
-        SampleClient.milli = milli;
+        delta = milli;
+        initial_orders = initial_orders_;
 
     }
     public void initLog(){
@@ -68,15 +69,32 @@ public class SampleClient implements Client{
     }
 
     @Override
-    public int sendOrder(Object par0)throws IOException{
+    public void run(){
+        try {
+            for (int i = 0; i < initial_orders; ++i) {
+                sendOrder();
+            }
 
+            messageHandler();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
+    public int sendOrder()throws IOException{
         int size   = RANDOM_NUM_GENERATOR.nextInt(5000);
         int instid = RANDOM_NUM_GENERATOR.nextInt(3);   // instrument id
 
-        Instrument instrument = INSTRUMENTS[RANDOM_NUM_GENERATOR.nextInt(INSTRUMENTS.length)];
+        Instrument instrument = INSTRUMENTS[instid];
         NewOrderSingle nos = new NewOrderSingle(size, instid, instrument);
+        return sendOrder(nos);
+    }
 
-        log.info("SC: sendOrder: id=" + id + " size=" + size + " instrument=" + INSTRUMENTS[instid].toString());
+    @Override
+    public int sendOrder(NewOrderSingle nos)throws IOException{
+
+        log.info("SC: sendOrder: id=" + id + " size=" + nos.size + " instrument=" + nos.instrument.toString());
 
         OUT_QUEUE.put(id, nos);
 
@@ -199,10 +217,10 @@ public class SampleClient implements Client{
     @Override
     public void messageHandler(){
         // Print the summary from time to time
-        ScheduledPrint sp = new ScheduledPrint(milli, this);
+        ScheduledPrint sp = new ScheduledPrint(delta, this);
 
         // Create a new order every X millisecond
-        ScheduledOrder so = new ScheduledOrder(milli, this);
+        ScheduledOrder so = new ScheduledOrder(delta, this);
 
         try {
             while (true){

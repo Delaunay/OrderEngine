@@ -5,6 +5,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -47,7 +48,8 @@ public class OrderManager {
 	private static LiveMarketData 	liveMarketData;
     HashMap<Integer, Order> orders = new HashMap<Integer, Order>();
 	private int 					id = 0;
-	private Socket	 				trader;
+	private int                     next_trader = 0;
+	private Socket[]	 		    traders;
 	private Socket[] 				orderRouters;
 	private Socket[] 				clients;
 	private Logger					log;
@@ -56,12 +58,12 @@ public class OrderManager {
 	public
 	OrderManager(InetSocketAddress[] orderRouters,
 				 InetSocketAddress[] clients,
-				 InetSocketAddress trader,
+				 InetSocketAddress[] traders,
 				 LiveMarketData liveData) throws InterruptedException
 	{
 		initLog();
 		liveMarketData = liveData ;
-		connectToTrader(trader);
+		connectToTraders(traders);
 		connectToRouters(orderRouters);
 		connectToClients(clients);
 	}
@@ -69,6 +71,13 @@ public class OrderManager {
 	protected void print(String msg){
 		log.info("OM: " + Thread.currentThread().getName() + msg);
 	}
+
+	public Socket getTrader(){
+	    Socket t = traders[next_trader];
+	    next_trader += 1;
+	    next_trader %= traders.length;
+	    return t;
+    }
 
 
 	/** Return true if some work has been done */
@@ -156,7 +165,7 @@ public class OrderManager {
 
 		for (clientId = 0; clientId < this.clients.length; clientId++) {
 			client = this.clients[clientId];
-			new Thread(new clientThread(clientId, client, this)).start();
+			new Thread(new ClientThread(clientId, client, this)).start();
 			System.out.println("client ID : "+clientId);
 		}
 	}
@@ -198,24 +207,29 @@ public class OrderManager {
 	}
 
 	public boolean processTraderMessages() throws IOException, ClassNotFoundException{
-		if (this.trader.getInputStream().available() <= 0)
-			return false;
+        boolean work_was_done = false;
+	    for(Socket trader : traders){
 
-		while(this.trader.getInputStream().available() > 0) {
-			ObjectInputStream is = new ObjectInputStream(this.trader.getInputStream());
-			TradeScreen.MessageKind method = (TradeScreen.MessageKind) is.readObject();
+            if (trader.getInputStream().available() <= 0)
+                continue;
 
-			print(" calling " + method);
+            while(trader.getInputStream().available() > 0) {
+                ObjectInputStream is = new ObjectInputStream(trader.getInputStream());
+                TradeScreen.MessageKind method = (TradeScreen.MessageKind) is.readObject();
 
-			switch (method) {
-                case ANSAcceptOrder:
-					acceptOrder(is.readInt());
-					break;
-                case ANSSliceOrder:
-					sliceOrder(is.readInt(), is.readInt());
-			}
-		}
-		return true;
+                print(" calling " + method);
+
+                switch (method) {
+                    case ANSAcceptOrder:
+                        acceptOrder(is.readInt());
+                        break;
+                    case ANSSliceOrder:
+                        sliceOrder(is.readInt(), is.readInt());
+                }
+                work_was_done = true;
+            }
+	    }
+		return work_was_done;
 	}
 
 
@@ -233,7 +247,7 @@ public class OrderManager {
 	}
 
 	private synchronized void sendOrderToTrader(int id, Order o, Object method) throws IOException {
-		ObjectOutputStream ost = new ObjectOutputStream(trader.getOutputStream());
+		ObjectOutputStream ost = new ObjectOutputStream(getTrader().getOutputStream());
 
 			ost.writeObject(method);
 			ost.writeInt(id);
@@ -406,8 +420,13 @@ public class OrderManager {
 	}
 
 
-	public void connectToTrader(InetSocketAddress trader) throws InterruptedException{
-		this.trader = connect(trader);
+	public void connectToTraders(InetSocketAddress[] traders_) throws InterruptedException{
+        int i = 0;
+        traders = new Socket[traders_.length];
+        for (InetSocketAddress add : traders_) {
+            traders[i] = connect(add);
+            i += 1;
+        }
 	}
 
 	public void connectToRouters(InetSocketAddress[] orderRouters) throws InterruptedException{
@@ -451,13 +470,12 @@ public class OrderManager {
     }
 }
 
-
-class clientThread implements Runnable{
+class ClientThread implements Runnable{
 	private int clientId;
 	private Socket client;
 	private  OrderManager oM;
 
-	clientThread(int clientId, Socket client, OrderManager oM){
+	ClientThread(int clientId, Socket client, OrderManager oM){
 		this.clientId = clientId;
 		this.client = client;
 		this.oM = oM;

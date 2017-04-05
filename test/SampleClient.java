@@ -226,13 +226,13 @@ public class SampleClient extends Thread implements Client {
     }
 
     void newOrderPending(FIXMessage m ){
-        log.info("-----NewOrderPending-----");
+        //log.info("-----NewOrderPending-----");
     }
     void orderPartialFill(FIXMessage m ){
-        log.info("-----PartialFill-----");
+        //log.info("-----PartialFill-----");
     }
     void orderfullFill(FIXMessage m ){
-        log.info("-----FullFill-----");
+        //log.info("-----FullFill-----");
     }
 
     @Override

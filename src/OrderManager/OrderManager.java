@@ -61,7 +61,7 @@ public class OrderManager extends HelperObject{
 	private int                     next_trader = 0;
 	private Socket[]	 		    traders;
 	private Socket[] 				orderRouters;
-	private Socket[] 				clients;
+	private Socket[] 		     	clients;
 
 	long totalMemoryUsage    = 0;
 	long memoryCount         = 0;
@@ -187,13 +187,22 @@ public class OrderManager extends HelperObject{
 
 	// Read Incoming Messages
 	// ------------------------------------------------------------------------
+    ClientThread[] clientWorkers;
 
 	public void spawnClients() {
-		for (int clientId = 0; clientId < this.clients.length; clientId++) {
+        clientWorkers = new ClientThread[clients.length];
+
+	    for (int clientId = 0; clientId < this.clients.length; clientId++) {
 			Socket client = this.clients[clientId];
-			new Thread(new ClientThread(clientId, client, this)).start();
+
+			clientWorkers[clientId] = new ClientThread(clientId, client, this);
+			Thread t = new Thread(clientWorkers[clientId]);
+            t.setName("ClientThread " + clientId);
+            t.start();
+
 			debug("client ID : " + clientId);
 		}
+		clients = null;
 	}
 
 	public boolean processRouterMessages() throws IOException, ClassNotFoundException{
@@ -258,6 +267,17 @@ public class OrderManager extends HelperObject{
 		return work_was_done;
 	}
 
+    void sendMessageToClient(int client_id, String message){
+	    /*
+		ObjectOutputStream os = new ObjectOutputStream(client.getOutputStream());
+			os.writeObject(message);
+			os.flush(); //*/
+
+        ClientThread client = clientWorkers[client_id];
+        client.addMessage(message);
+    }
+
+
 
 	// Actions
 	// ----------------------------------------------------------------
@@ -265,11 +285,8 @@ public class OrderManager extends HelperObject{
 
 		orders.put(id, new PendingOrder(new Order(clientId, id, nos.instrument, nos.size, clientOrderId)));
 
-		ObjectOutputStream os = new ObjectOutputStream(clients[clientId].getOutputStream());
-			os.writeObject("11=" + clientOrderId + ";35=A;39=A;");
-			os.flush();
-
-		sendOrderToTrader(id, orders.get(id).order, TradeScreen.MessageKind.REQNewOrder);
+		sendMessageToClient(clientId, "11=" + clientOrderId + ";35=A;39=A;");
+		sendOrderToTrader  (id, orders.get(id).order, TradeScreen.MessageKind.REQNewOrder);
 		id++;
 	}
 
@@ -290,10 +307,7 @@ public class OrderManager extends HelperObject{
 		}
 		o.OrdStatus = '0'; // New
 
-		ObjectOutputStream os = new ObjectOutputStream(clients[o.clientid].getOutputStream());
-			os.writeObject("11=" + o.client_order_id + ";35=A;39=0");
-			os.flush();
-
+        sendMessageToClient(o.clientid, "11=" + o.client_order_id + ";35=A;39=0");
 		price(id, o);
 	}
 
@@ -355,9 +369,7 @@ public class OrderManager extends HelperObject{
 
 		sendOrderToTrader(id, o, TradeScreen.MessageKind.REQFill);
 
-        ObjectOutputStream os = new ObjectOutputStream(clients[o.clientid].getOutputStream());
-            os.writeObject(message);
-            os.flush();
+        sendMessageToClient(o.clientid, message);
 	}
 
 	/** Ask for the best price to each router

@@ -5,6 +5,7 @@ import LiveMarketData.LiveMarketData;
 import OrderClient.NewOrderSingle;
 import OrderManager.ClientThread.PendingNewOrder;
 import OrderRouter.Router;
+import Ref.Instrument;
 import TradeScreen.TradeScreen;
 import Utility.HelperObject;
 import com.sun.management.OperatingSystemMXBean;
@@ -16,6 +17,8 @@ import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.channels.ServerSocketChannel;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -38,6 +41,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class OrderManager extends HelperObject{
     private ConcurrentHashMap<Integer, PendingOrder> orders = new ConcurrentHashMap<>();
     private ConcurrentLinkedQueue<PendingNewOrder>   pending_new_orders = new ConcurrentLinkedQueue<>();
+    private HashMap<Instrument, LinkedList<Slice>>   slices = new HashMap<>(100);
 
     private static LiveMarketData 	liveMarketData;
 	private int 					id          = 0;
@@ -46,6 +50,7 @@ public class OrderManager extends HelperObject{
 	private Socket[] 				orderRouters;
 	private Socket[] 		     	clients;
     private ClientThread[]          clientWorkers;
+    private long                    print_delta = 1000;
 
 	long totalMemoryUsage    = 0;
 	long memoryCount         = 0;
@@ -55,6 +60,18 @@ public class OrderManager extends HelperObject{
 	long lastOrderSize       = 0;
 	long numOrderPerSecond   = 0;
 	double averageCPU        = 0;
+
+	public static class Slice{
+		public int size;
+		public double price;
+		public PendingOrder parent;
+
+		public Slice(PendingOrder p, int s, double px){
+			parent = p;
+			price = px;
+			size = s;
+		}
+	}
 
     public OrderManager(InetSocketAddress[] routers,
                  InetSocketAddress[] clients,
@@ -135,7 +152,7 @@ public class OrderManager extends HelperObject{
 
         info("       Order: " + orders.size() + " \t" + "(AVG: " + averageTimePerOrder + ")");
         info("      Memory: " + memory + " KB (AVG: " + averageMemoryUsage + " KB)");
-        info("    CPU load: " + trunc(cpu * 100) + " \t(AVG: " + trunc(averageCPU * 100 / memoryCount) + "%)");
+        info("    CPU load: " + trunc(cpu * 100.0) + " \t(AVG: " + trunc(averageCPU * 100.0 / memoryCount) + "%)");
 
 		if(memory > 1048576 ){
 			System.exit(0);
@@ -170,7 +187,7 @@ public class OrderManager extends HelperObject{
 
 	public void run(){
         // Print the summary from time to time
-        ScheduledPrint sp = new ScheduledPrint(1000, this);
+        ScheduledPrint sp = new ScheduledPrint(print_delta, this);
 
         spawnClients();
 
@@ -283,17 +300,10 @@ public class OrderManager extends HelperObject{
 	}
 
     void sendMessageToClient(int client_id, String message){
-	    /*
-		ObjectOutputStream os = new ObjectOutputStream(client.getOutputStream());
-			os.writeObject(message);
-			os.flush(); //*/
-
         ClientThread client = clientWorkers[client_id];
         client.addMessage(message);
     }
-
-
-
+    
 	// Actions
 	// ----------------------------------------------------------------
 	protected void newOrder(int clientId, int clientOrderId, NewOrderSingle nos) throws IOException {
@@ -327,7 +337,32 @@ public class OrderManager extends HelperObject{
 	}
 
 	public void sliceOrder(int id, int sliceSize) throws IOException {
-		Order o = orders.get(id).order;
+		PendingOrder po = orders.get(id);
+		LinkedList<Slice> slice = slices.get(po.order.instrument);
+
+		if (slice == null) {
+            slice = new LinkedList<Slice>();
+            slices.put(po.order.instrument, slice);
+        }
+
+		int order_size = po.size_remain;
+		int slice_size = sliceSize;
+		po.slice_num = 0;
+
+		while(order_size > 0){
+
+			if (order_size < slice_size)
+				sliceSize = order_size;
+
+			slice.add(new Slice(po, slice_size, po.order.initialMarketPrice));
+			order_size -= slice_size;
+			po.slice_num += 1;
+		}
+
+		debug("Order size: " + po.size_remain + " Slices: " + po.slice_num + " SliceSize:" + sliceSize);
+
+		/*
+    	Order o = orders.get(id).order;
 		if (sliceSize > o.sizeRemaining() - o.sliceSizes()) {
 			sliceSize = o.sizeRemaining() - o.sliceSizes();
 		    //error("error sliceSize is bigger than remaining size to be filled on the order");
@@ -341,10 +376,22 @@ public class OrderManager extends HelperObject{
 		int sizeRemaining = o.slices.get(sliceId).sizeRemaining();
 		if (sizeRemaining > 0) {
 			askBestPrice(id, sliceId, sizeRemaining, slice);
-		}
+		}*/
 	}
 
 	private void internalCross(int id, Order o) throws IOException {
+        PendingOrder po = orders.get(id);
+        LinkedList<Slice> slice = slices.get(po.order.instrument);
+
+        if (slice == null)
+            return;
+
+        if (po.slice_num == slice.size()){
+
+        }
+
+
+        /*
 		for (Map.Entry<Integer, PendingOrder> entry : orders.entrySet()) {
 			if (entry.getKey() == id)
 				continue;
@@ -362,7 +409,7 @@ public class OrderManager extends HelperObject{
 			if (sizeBefore != o.sizeRemaining()) {
 				sendOrderToTrader(id, o, TradeScreen.MessageKind.REQCross);
 			}
-		}
+		} */
 	}
 
 	private void newFill(int id, int sliceId, int size, double price) throws IOException {
@@ -382,8 +429,9 @@ public class OrderManager extends HelperObject{
 		} else {
             message = message + ";39=1";
         }
+        // We should execute next slice
 
-		sendOrderToTrader(id, o, TradeScreen.MessageKind.REQFill);
+		//sendOrderToTrader(id, o, TradeScreen.MessageKind.REQFill);
         sendMessageToClient(o.clientid, message);
 	}
 

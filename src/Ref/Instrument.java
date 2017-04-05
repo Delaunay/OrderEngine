@@ -22,6 +22,14 @@ public class Instrument implements Serializable {
     public Ric getRic() {
         return ric;
     }
+
+    public boolean equals(Instrument i){
+        return ric.ric.equals(i.ric.ric);
+    }
+
+    public int hashCode(){
+        return ric.ric.hashCode();
+    }
 }
 
 class EqInstrument extends Instrument {

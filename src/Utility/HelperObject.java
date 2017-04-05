@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit;
 public class HelperObject {
     public static Level logLevel = Level.INFO;
     public static int   waitTime = 1;
-    public static int   socket_buffer = 1024 * 1024;
+    public static int   socket_buffer = 1024 * 1024 * 2;
 
 
     public void info(String m) {    classLog.info (m);  }

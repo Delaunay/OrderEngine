@@ -48,6 +48,29 @@ Benchmarks with multiple traders
 1124 orders pe second
 12.359 average cpu load
 
+Benchmarks with packets
+16534 kb 35464 orders 642 orders per second average cpu load 27.630
+12515 kb 20277 orders 661 orders per second average cpu load 29.077
+14602 kb 21105 orders 646 orders per second average cpu load 26.915
+13480 kb 20540 orders 679 orders per second average cpu load 27.835
+13112 kb 19333 orders 661 orders per second average cpu load 28.582
+13677 kb 20979 orders 652 orders per second average cpu load 28.410
+12981 kb 20370 orders 651 orders per second average cpu load 27.649
+13577 kb 20417 orders 662 orders per second average cpu load 30.398
+12519 kb 20191 orders 667 orders per second average cpu load 26.279
+14144 kb 24019 orders 653 orders per second average cpu load 28.694
+17051 kb 25936 orders 669 orders per second average cpu load 27.533
+14017 kb average
+22603 average orders per benchmark
+658 orders per second
+28.091 average cpu load
+
+
+
+
+
+
+
 
 
 

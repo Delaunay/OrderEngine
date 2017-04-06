@@ -12,8 +12,8 @@ import java.util.HashMap;
 
 /**
  * 		- Trader listens to the OrderManager
- *      - Decides if an order can be directly fill or if it needs to be sliced
- *      - Returns its choice to the OrderManager
+ *<br>      - Decides if an order can be directly fill or if it needs to be sliced
+ *<br>      - Returns its choice to the OrderManager
  */
 public class SampleTrader extends OrderManagerClient implements TradeScreen, Runnable{
 	private HashMap<Integer,Order> orders = new HashMap<>();

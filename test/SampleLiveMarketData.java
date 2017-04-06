@@ -9,8 +9,8 @@ import java.net.Socket;
 import java.util.Random;
 
 /**
- * - LiveMarketData listens to the OrderManager
- * - Set the current price of an order
+ *<br>- LiveMarketData listens to the OrderManager
+ *<br>- Set the current price of an order
  */
 public class SampleLiveMarketData extends OrderManagerClient implements LiveMarketData, Runnable {
     private static final Random RANDOM_NUM_GENERATOR = new Random();

@@ -26,17 +26,17 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * 			Order Manager listens to
- * 				- Clients
- * 				- TradingEngine (SampleTrader)
- * 				- Routers       (Markets)
- *
- *		Clients -> newOrder -> SampleTrader
- *
- *		Router -> newFill -> SampleTrader
- *			   -> BestPrice -> ReallyRouteOrder -> Router
- *
- *		SampleTrader -> sliceOrder -> Cross -> RouteOrder
- *			   -> AcceptOrder -> Client
+ *<br> 				- Clients
+ *<br> 				- TradingEngine (SampleTrader)
+ *<br> 				- Routers       (Markets)
+ *<br>
+ *<br>	Clients - newOrder - SampleTrader
+ *<br>
+ *<br>		Router -&gt; newFill -&gt; SampleTrader
+ *<br>			   -&gt; BestPrice -&gt; ReallyRouteOrder -&gt; Router
+ *<br>
+ *<br>		SampleTrader -&gt; sliceOrder -&gt; Cross -&gt; RouteOrder
+ *<br>	 	   -&gt; AcceptOrder -&gt; Client
  */
 public class OrderManager extends Actor{
 	// Orders being processed

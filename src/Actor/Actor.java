@@ -10,8 +10,8 @@ import java.net.Socket;
 
 /**
  * An Actor is an Object that read messages from
- * an ActorManager and perform an operation and send
- * back a new message to the Actor Manager
+ * <br>an ActorManager and perform an operation and send
+ * <br>back a new message to the Actor Manager
  * <p>
  * <pre>
  *          Actor       Actor          Actor

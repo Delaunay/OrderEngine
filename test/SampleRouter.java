@@ -9,8 +9,8 @@ import java.net.InetSocketAddress;
 
 /**
  * 		- Router listens to the OrderManager
- *      - If called using the bestPrice method, returns the price for the order as given in MockConfig
- *      - If called using the newFill method, informs the OrderManager of the price of a new fill for the order
+ *<br>      - If called using the bestPrice method, returns the price for the order as given in MockConfig
+ *<br>      - If called using the newFill method, informs the OrderManager of the price of a new fill for the order
  */
 public class SampleRouter extends OrderManagerClient implements Router, Runnable {
     public SampleRouter(InetSocketAddress om_address) {

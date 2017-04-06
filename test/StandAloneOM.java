@@ -6,12 +6,12 @@ public class StandAloneOM {
 
     /**
      *  Build a OrderManager
-     *      Argument supported:
-     *          -routers            Specify the routers' hostname and port number
-     *          -clients            Specify the clients' hostname and port number
-     *          -traders            Specify the traders' hostname and port number
-     *          -liveData           Specify the live Market Data
-     *          -config             Specify the configuration file to load
+     *<br>      Argument supported:
+     *<br>          -routers            Specify the routers' hostname and port number
+     *<br>          -clients            Specify the clients' hostname and port number
+     *<br>          -traders            Specify the traders' hostname and port number
+     *<br>          -liveData           Specify the live Market Data
+     *<br>          -config             Specify the configuration file to load
      */
 
     public static void main(String[] args){
@@ -28,7 +28,7 @@ public class StandAloneOM {
         int    om_port     = conf.getOrderManagerPort();
 
 
-        OrderManager order_manager = new OrderManager(om_port, liveMarketData);
+        OrderManager order_manager = new OrderManager(om_port);
             order_manager.run();
     }
 }

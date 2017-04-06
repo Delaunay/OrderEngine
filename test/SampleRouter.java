@@ -1,58 +1,40 @@
 import OrderRouter.Router;
 import Ref.Instrument;
 import Ref.Ric;
+import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
 
-import javax.net.ServerSocketFactory;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.Socket;
+import java.net.InetSocketAddress;
 
-public class SampleRouter extends Thread implements Router {
+public class SampleRouter extends OrderManagerClient implements Router, Runnable {
     private static final Instrument[] INSTRUMENTS = {
             new Instrument(new Ric("VOD.L")),
             new Instrument(new Ric("BP.L")),
             new Instrument(new Ric("BT.L"))
     };
 
-    public boolean sleep = true;
-    private Socket omConn;
-    private int    port;
-
     private ObjectInputStream  is;
     private ObjectOutputStream os;
 
-    private Logger log;
 
-
-    public SampleRouter(String name, int port) {
-        this.setName(name);
-        this.port = port;
-        initLog();
+    public SampleRouter(InetSocketAddress om_address) {
+        super(om_address);
+        initLog(this.getClass().getName());
     }
+    
 
-    public void initLog(){
-        log = LogManager.getLogger("Debug");
-        log.setLevel(Level.WARN);
-    }
-
-
-    public void connectToOrderManager() throws IOException {
-        omConn = ServerSocketFactory.getDefault().createServerSocket(port).accept();
-        omConn.setSendBufferSize(HelperObject.socket_buffer);
-        omConn.setReceiveBufferSize(HelperObject.socket_buffer);
-        log.info("Connected to OM " + port);
+    public void connectToOrderManager(InetSocketAddress address) throws IOException{
+        connectToOrderManager(ConnectionType.RouterConnection, address);
     }
 
     @Override
     public void run() {
         try {
-            if (omConn == null)
-                connectToOrderManager();
+            if (order_manager == null)
+                connectToOrderManager(order_manager_address);
 
             while (true) {
                 runOnce();
@@ -60,7 +42,7 @@ public class SampleRouter extends Thread implements Router {
                 HelperObject.sleep(HelperObject.waitTime);
             }
         } catch (ClassNotFoundException e) {
-            log.error("Unknown message format, Could not read objectStream");
+            error("Unknown message format, Could not read objectStream");
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -68,12 +50,12 @@ public class SampleRouter extends Thread implements Router {
     }
 
     public boolean runOnce() throws IOException, ClassNotFoundException {
-        while (omConn.getInputStream().available() > 0) {
-            is = new ObjectInputStream(omConn.getInputStream());
+        while (order_manager.getInputStream().available() > 0) {
+            is = new ObjectInputStream(order_manager.getInputStream());
 
             Router.MessageKind methodName = (Router.MessageKind) is.readObject();
 
-            log.debug("Order Router received method call for: " + methodName);
+            debug("Order Router received method call for: " + methodName);
 
             // Order Dispatch
             switch (methodName) {
@@ -100,7 +82,7 @@ public class SampleRouter extends Thread implements Router {
         int    fillSize  =  getFillSize(i, size);
         double fillPrice = getFillPrice(i, size);
 
-        os = new ObjectOutputStream(omConn.getOutputStream());
+        os = new ObjectOutputStream(order_manager.getOutputStream());
             os.writeObject(MessageKind.ANSNewFill);
             os.writeInt(id);
             os.writeInt(sliceId);
@@ -111,7 +93,7 @@ public class SampleRouter extends Thread implements Router {
 
     @Override
     public void priceAtSize(int id, int sliceId, Instrument i, int size) throws IOException {
-        os = new ObjectOutputStream(omConn.getOutputStream());
+        os = new ObjectOutputStream(order_manager.getOutputStream());
             os.writeObject(MessageKind.ANSBestPrice);
             os.writeInt(id);
             os.writeInt(sliceId);

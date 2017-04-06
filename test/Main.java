@@ -1,4 +1,3 @@
-import LiveMarketData.LiveMarketData;
 import Utility.Configuration;
 import org.apache.log4j.BasicConfigurator;
 
@@ -21,15 +20,19 @@ public class Main {
         int initial_orders = 10;
         int print_delta    = 10;
 
-        LiveMarketData liveMarketData = new SampleLiveMarketData();
+
+        //LiveMarketData liveMarketData = new SampleLiveMarketData();
 
         // Starting Order Manager
-        Thread om = new Thread(new SampleOrderManager(om_port, liveMarketData));
+        Thread om = new Thread(new SampleOrderManager(om_port));
             om.setName("Order Manager");
             om.start();
 
         InetSocketAddress om_address = new InetSocketAddress(om_hostname, om_port);
 
+        Thread lm = new Thread(new SampleLiveMarketData(om_address));
+            lm.setName("LiveMarketData");
+            lm.start();
 
         for(int i = 0; i < num_router; ++i) {
             Thread t = new Thread(new SampleRouter(om_address));

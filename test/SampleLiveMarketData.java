@@ -1,15 +1,17 @@
+import Actor.Message;
 import LiveMarketData.LiveMarketData;
 import OrderManager.Order;
+import Utility.Connection;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Random;
 
-//TODO this should really be in its own thread
-// Why ? It is not like it is doing anything...
-// no event loop
+/**
+ * - LiveMarketData listens to the OrderManager
+ * - Set the current price of an order
+ */
 public class SampleLiveMarketData extends OrderManagerClient implements LiveMarketData, Runnable {
     private static final Random RANDOM_NUM_GENERATOR = new Random();
     private Socket omConn;
@@ -25,17 +27,46 @@ public class SampleLiveMarketData extends OrderManagerClient implements LiveMark
             o.initialMarketPrice = 460 + (60 * RANDOM_NUM_GENERATOR.nextGaussian());
         }
     }
-    public void connectToOrderManager(int port) throws IOException {
-        //OM will connect to us
-        omConn = new ServerSocket(port).accept();
+    public void connectToOrderManager(InetSocketAddress address) throws IOException {
+        connectToOrderManager(Connection.ConnectionType.LiveMarketDataConnection, address);
     }
 
-    SampleLiveMarketData(){
+    /*SampleLiveMarketData(){
         super(new InetSocketAddress(2000));
+    }*/
+
+    SampleLiveMarketData(InetSocketAddress om_address){
+        super(om_address);
+        initLog(this.getClass().getName());
+    }
+
+    public
+    boolean readMessage() throws IOException, ClassNotFoundException{
+        while(isAvailable()) {
+
+            Message message = readMessage(order_manager);
+
+            debug("called " + message.op);
+
+            switch (message.op) {
+                case REQPrice:
+                    setPrice(message.o);
+                    return true;
+            }
+        }
+        return false;
     }
 
     @Override
     public void run() {
+        try {
 
+            connectToOrderManager(order_manager_address);
+
+            readMessage();
+
+        } catch (IOException | ClassNotFoundException e){
+            e.printStackTrace();
+        }
     }
 }

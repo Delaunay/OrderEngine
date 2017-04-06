@@ -10,11 +10,15 @@ import Utility.Util;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Random;
 
+/**
+ * 		- Client listens and writes to the OrderManager
+ *      - Generate and send orders to the OrderManager
+ *      - Receive updates from the OrderManager about the state of its orders
+ */
 public class SampleClient extends OrderManagerClient implements Client, Runnable {
     private static final Random RANDOM_NUM_GENERATOR = new Random();
     private static final Instrument[] INSTRUMENTS = {

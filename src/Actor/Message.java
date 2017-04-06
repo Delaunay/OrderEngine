@@ -21,6 +21,7 @@ import java.io.Serializable;
  */
 public class Message implements Serializable{
     public MessageKind op;
+    public Order o;
 
     public enum MessageKind {
         // OrderManager -> SampleTrader
@@ -206,6 +207,14 @@ public class Message implements Serializable{
             op       = MessageKind.REQPrice;
             order_id = order_id_;
             order    = order_;
+        }
+    }
+
+    public static class SetPrice extends Message{
+
+        public SetPrice(Order order_){
+            op       = MessageKind.REQPrice;
+            o   = order_;
         }
     }
 

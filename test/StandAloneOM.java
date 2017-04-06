@@ -1,4 +1,3 @@
-import LiveMarketData.LiveMarketData;
 import OrderManager.OrderManager;
 
 public class StandAloneOM {
@@ -14,8 +13,8 @@ public class StandAloneOM {
      */
 
     public static void main(String[] args){
-        LiveMarketData liveMarketData = new SampleLiveMarketData();
-        OrderManager order_manager = new OrderManager(2000, liveMarketData);
+        //LiveMarketData liveMarketData = new SampleLiveMarketData();
+        OrderManager order_manager = new OrderManager(2000);
         order_manager.run();
     }
 }

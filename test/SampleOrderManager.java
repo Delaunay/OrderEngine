@@ -1,11 +1,10 @@
-import LiveMarketData.LiveMarketData;
 import OrderManager.OrderManager;
 
 
 public class SampleOrderManager extends OrderManager implements Runnable{
 
-    public SampleOrderManager(int port, LiveMarketData liveMarketData){
-        super(port, liveMarketData);
+    public SampleOrderManager(int port){
+        super(port);
     }
     @Override
     public void run() {

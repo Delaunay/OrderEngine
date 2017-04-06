@@ -1,11 +1,8 @@
 package OrderManager;
 
-import OrderClient.NewOrderSingle;
 import Actor.Actor;
 import Actor.Message;
 
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -59,6 +56,7 @@ class ClientThread extends Actor implements Runnable {
 				sendMessages();
 
 			Message m = readMessage(client);
+
 			debug(" calling " + m.op);
 
 			switch (m.op) {

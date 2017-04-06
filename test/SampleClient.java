@@ -18,7 +18,7 @@ import java.util.HashMap;
  */
 public class SampleClient extends OrderManagerClient implements Client, Runnable {
     // queue for outgoing orders
-    private HashMap<Integer, NewOrderSingle> OUT_QUEUE = new HashMap<>();
+    //private HashMap<Integer, NewOrderSingle> OUT_QUEUE = new HashMap<>();
     // message id number used as a `primary key` thats why it is static
     // Although this needs to change, the id should be given by the OrderManager not the client
     private static int 		     id = 0;
@@ -76,7 +76,7 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
     public int sendOrder(NewOrderSingle nos)throws IOException{
         debug("SC: sendOrder: id=" + id + " size=" + nos.size + " instrument=" + nos.instrument.toString());
 
-        OUT_QUEUE.put(id, nos);
+        // OUT_QUEUE.put(id, nos);
 
         if(order_manager.isConnected()){
             sendMessage(order_manager, new Message.NewOrderSingle(id, nos.instrument, nos.size, nos.price));
@@ -101,18 +101,18 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
     @Override
     public void fullyFilled(Order order){
         debug(" FullFill" + order);
-        OUT_QUEUE.remove(order.id);
+        //OUT_QUEUE.remove(order.id);
     }
 
     @Override
     public void cancelled(Order order){
         debug(" Cancelled" + order);
-        OUT_QUEUE.remove(order.id);
+        //OUT_QUEUE.remove(order.id);
     }
 
     /** Print out a summary of the Client, outstanding orders*/
     public void summary(){
-        debug(Thread.currentThread().getName() + " has: " + OUT_QUEUE.size() + " outstanding orders");
+        //debug(Thread.currentThread().getName() + " has: " + OUT_QUEUE.size() + " outstanding orders");
     }
 
     public boolean readMessage() throws IOException, ClassNotFoundException{

@@ -15,7 +15,7 @@ import java.util.HashMap;
  *<br>      - Returns its choice to the OrderManager
  */
 public class SampleTrader extends OrderManagerClient implements TradeScreen, Runnable{
-	private HashMap<Integer,Order> orders = new HashMap<>();
+	//private HashMap<Integer,Order> orders = new HashMap<>();
     private InputStream            is;
     private Integer                port = null;
 
@@ -94,7 +94,7 @@ public class SampleTrader extends OrderManagerClient implements TradeScreen, Run
 	@Override
 	public void newOrder(Message.TraderNewOrder m) throws IOException{
 		// TODO the order should go in a visual grid, but not needed for test purposes
-		orders.put(m.order_id, m.order);
+		//orders.put(m.order_id, m.order);
 		acceptOrder(m.order_id);
 	}
 

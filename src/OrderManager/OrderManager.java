@@ -519,24 +519,6 @@ public class OrderManager extends Actor{
 	}
 
 
-	// Order Filling
-    // ------------------------------------------------------------------------
-    /*
-    void sliceFill(int order_id, int size, int price){
-	    PendingOrder order = orders.get(order_id);
-            order.size_remain -= size;
-            order.slice_num -= 1;
-	        order.cost += size * price;
-
-        // send info about the last fill
-        sendPartialFill(order.order, size, price);
-
-        if (order.size_remain == 0) {
-            // if done tell the client too
-            sendFullFill(order.order, order.cost);
-        }
-    } */
-
 	// Connection
     // ------------------------------------------------------------------------
 	public void acceptConnection() throws IOException{
@@ -681,7 +663,7 @@ public class OrderManager extends Actor{
 				lastOrderSize = order_size;
 				if (now > startingTime){
 					numOrderPerSecond = (diffOrders  * 1000 /(now - lastTime));
-					averageTimePerOrder = order_size * 1000 / (now - startingTime);
+					averageTimePerOrder = (int) manager.processed_orders * 1000 / (now - startingTime);
 					lastTime = now;
 				}
 			}

@@ -84,7 +84,7 @@ public class SampleRouter extends OrderManagerClient implements Router, Runnable
         int size = m.size;
         Instrument i = m.asset;
 
-        int    fillSize  =  getFillSize(i, size);
+        int    fillSize  = getFillSize(i, size);
         double fillPrice = getFillPrice(i, size);
 
         sendMessage(order_manager,

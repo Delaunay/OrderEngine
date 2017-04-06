@@ -21,7 +21,8 @@ public class MockConfig {
     public static int fill_size = 500;
 
     public static double getPriceAtSize(Instrument i, int size) {
-        return getFillPrice(i, size);
+        double eps = RANDOM_NUM_GENERATOR.nextGaussian();
+        return getFillPrice(i, size) + eps;
     }
 
     public static double getFillPrice(Instrument i, int size) {

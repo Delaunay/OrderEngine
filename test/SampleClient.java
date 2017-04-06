@@ -11,6 +11,11 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 
+/**
+ * 		- Client listens and writes to the OrderManager
+ *<br>      - Generate and send orders to the OrderManager
+ *<br>      - Receive updates from the OrderManager about the state of its orders
+ */
 public class SampleClient extends OrderManagerClient implements Client, Runnable {
     // queue for outgoing orders
     private HashMap<Integer, NewOrderSingle> OUT_QUEUE = new HashMap<>();

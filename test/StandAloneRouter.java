@@ -10,10 +10,10 @@ public class StandAloneRouter {
 
     /**
      *  Build a Router
-     *      Argument supported:
-     *          -port      Specify the port number the OrderManager is going to communicate with us
-     *          -name      Specify the name of the router
-     *          -config    Specify the configuration file to load
+     *<br>      Argument supported:
+     *<br>          -port      Specify the port number the OrderManager is going to communicate with us
+     *<br>          -name      Specify the name of the router
+     *<br>          -config    Specify the configuration file to load
      */
 
     public static void main(String[] args) {

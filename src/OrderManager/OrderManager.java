@@ -1,9 +1,9 @@
 package OrderManager;
 
+import LiveMarketData.LiveMarketData;
 import Actor.Actor;
 import Actor.Message;
 import Database.Database;
-import LiveMarketData.LiveMarketData;
 import OrderManager.ClientThread.PendingNewOrder;
 import OrderRouter.Router;
 import Ref.Instrument;
@@ -26,9 +26,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * 			Order Manager listens to
- * 				- Clients
- * 				- TradingEngine (SampleTrader)
- * 				- Routers       (Markets)
+ *<br> 				- Clients
+ *<br> 				- TradingEngine (SampleTrader)
+ *<br> 				- Routers       (Markets)
  * <p>
  * <pre>
  *     {@code
@@ -53,15 +53,15 @@ public class OrderManager extends Actor{
 
     private HashMap<Instrument, LinkedList<Slice>> slices = new HashMap<>(10);
 
-    private static LiveMarketData 	liveMarketData;
-    private int                     print_delta = 100;
-	private int 					id          = 0;
-	private int                     next_trader = 0;
-	private ArrayList<Socket> 		traders = new ArrayList<>(100);
-	private ArrayList<Socket>		routers = new ArrayList<>(100);
-    private ArrayList<ClientThread> client_threads = new ArrayList<>(100);
-	private ServerSocketChannel 	serverSocket;
-	private Statistics				stats = new Statistics();
+    private LiveMarketData      			liveMarketData;
+    private int                     		print_delta = 100;
+	private int 							id          = 0;
+	private int                     		next_trader = 0;
+	private ArrayList<Socket> 				traders = new ArrayList<>(100);
+	private ArrayList<Socket>				routers = new ArrayList<>(100);
+    private ArrayList<ClientThread> 		client_threads = new ArrayList<>(100);
+	private ServerSocketChannel 			serverSocket;
+	private Statistics						stats = new Statistics();
 
     public static class Slice{
         public int size;
@@ -84,7 +84,6 @@ public class OrderManager extends Actor{
             error("Could not bind socket to port");
             System.exit(1);
         }
-
         initLog(this.getClass().getName());
         liveMarketData = liveData ;
     }
@@ -450,7 +449,8 @@ public class OrderManager extends Actor{
 	}
 
 	private void price(int id, Order o) throws IOException {
-		liveMarketData.setPrice(o);
+		//sendMessage(liveData, new Message.SetPrice(o));
+        liveMarketData.setPrice(o);
 		sendMessage(getTrader(), new Message.TraderPrice(id, o));
 	}
 
@@ -527,7 +527,9 @@ public class OrderManager extends Actor{
 					addClientConnection(con); break;
 				case RouterConnection:
                     acceptConnection(con);
-					addRouterConnection(con); break;
+					addRouterConnection(con); break;/*
+				case LiveMarketDataConnection:
+					addLiveMarketDataConnection(con);*/
 			}
 		} catch (ClassNotFoundException e){
 			error("Connection Type unknown");
@@ -561,6 +563,12 @@ public class OrderManager extends Actor{
 		info("Client (" + size + ") has connected");
 		spawnClient(size, client);
 	}
+
+	/*
+	void addLiveMarketDataConnection(Socket liveMData){
+		info("Live Market has connected");
+		liveData = liveMData;
+	} */
 
 	public void spawnClient(int client_id, Socket client) {
 		ClientThread ct = new ClientThread(client_id, client, this);

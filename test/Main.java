@@ -21,7 +21,8 @@ public class Main {
         int initial_orders = 10;
         int print_delta    = 10;
 
-        LiveMarketData liveMarketData = new SampleLiveMarketData();
+
+        //LiveMarketData liveMarketData = new SampleLiveMarketData();
 
         InetSocketAddress[] traders = new InetSocketAddress[num_trader];
         for(int i = 0; i < num_trader; ++i) {
@@ -41,18 +42,16 @@ public class Main {
         }
 
 
+        LiveMarketData lmd = new SampleLiveMarketData(null);
+
         // Starting Order Manager
-        SampleOrderManager m = new SampleOrderManager(om_port, liveMarketData, traders, routers);
+        SampleOrderManager m = new SampleOrderManager(om_port, lmd, traders, routers);
 
         Thread om = new Thread(m);
             om.setName("Order Manager");
             om.start();
 
         InetSocketAddress om_address = new InetSocketAddress(om_hostname, om_port);
-
-
-
-
 
         for(int i = 0; i < num_client; ++i) {
             Thread t = new Thread( new SampleClient(print_delta, initial_orders, om_address));

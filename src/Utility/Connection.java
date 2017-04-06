@@ -7,5 +7,6 @@ public class Connection {
         ClientConnection,
         RouterConnection,
         Accept,
+        LiveMarketDataConnection
     }
 }

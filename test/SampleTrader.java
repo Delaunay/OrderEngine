@@ -12,6 +12,11 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.util.HashMap;
 
+/**
+ * 		- Trader listens to the OrderManager
+ *<br>      - Decides if an order can be directly fill or if it needs to be sliced
+ *<br>      - Returns its choice to the OrderManager
+ */
 public class SampleTrader extends OrderManagerClient implements TradeScreen, Runnable{
 	private HashMap<Integer,Order> orders = new HashMap<>();
     private InputStream            is;

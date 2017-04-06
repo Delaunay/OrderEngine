@@ -60,14 +60,17 @@ public class OrderManager extends Actor{
 
     private LiveMarketData      			liveMarketData;
     private double                          eps         = 1e-6;
-    private int                     		print_delta = 100;
+    private int                     		print_delta = 1000;
 	private int 							id          = 0;
 	private int                     		next_trader = 0;
 	private ArrayList<Socket> 				traders = new ArrayList<>(100);
 	private ArrayList<Socket>				routers = new ArrayList<>(100);
     private ArrayList<ClientThread> 		client_threads = new ArrayList<>(100);
 	private ServerSocketChannel 			serverSocket;
-	private Statistics						stats = new Statistics();
+	private Statistics						stats = new Statistics(this);
+
+	private double                          processed_orders = 0;
+	private double                          total_orders     = 0;
 
     void init(int port, LiveMarketData liveData){
         try {
@@ -256,8 +259,8 @@ public class OrderManager extends Actor{
 		sendMessageToClient(clientId, "11=" + clientOrderId + ";35=A;39=A;");
 		sendMessage(getTrader(), new Message.TraderNewOrder(id, po.order));
 		id++;
+		total_orders += 1;
 	}
-
 
 	public void acceptOrder(Message.TraderAcceptOrder m) throws IOException {
 		Order o = orders.get(m.order_id).order;
@@ -303,7 +306,7 @@ public class OrderManager extends Actor{
 
 		debug("Order size: " + po.size_remain + " Slices: " + po.slice_num + " SliceSize:" + m.slice_size);
 
-		internalCross(po.order.instrument);
+		//internalCross(po.order.instrument);
 
         if (po.size_remain > 0) {
             int slice_id = po.slices.size() - po.slice_num;
@@ -315,6 +318,7 @@ public class OrderManager extends Actor{
 	private void internalCross(Instrument asset) {
         List<Slice> slices = sliceTable.get(asset);
 
+        // n ^ 2
         for(int i = 0; i < slices.size(); ++i){
             Slice a = slices.get(i);
             for(int k = i; k < slices.size(); ++k){
@@ -412,6 +416,8 @@ public class OrderManager extends Actor{
 		if (po.size_remain == 0) {
             message = message + ";39=2";
 			Database.write(po.order);
+			orders.remove(po);
+            processed_orders += 1;
 		} else {
             message = message + ";39=1";
         }
@@ -641,7 +647,7 @@ public class OrderManager extends Actor{
 
 	//		Runtime statistics about OrderManager
 	// ------------------------------------------------------------------------
-	static class Statistics extends HelperObject{
+	static class Statistics {
 		long startingTime        = System.currentTimeMillis();
 		long lastTime            = System.currentTimeMillis();
 		long totalMemoryUsage    = 0;
@@ -651,8 +657,10 @@ public class OrderManager extends Actor{
 		long numOrderPerSecond   = 0;
 		double averageCPU        = 0;
 
-		Statistics(){
-			initLog(this.getClass().getName());
+        OrderManager manager;
+
+		Statistics(OrderManager manager_){
+			manager = manager_;
 		}
 
 		void summary(int order_size){
@@ -682,9 +690,14 @@ public class OrderManager extends Actor{
 			double cpu = cpuMeasure.getProcessCpuLoad();
 			averageCPU += cpu;
 
-			info("       Order: " + order_size + " \t" + "(AVG: " + averageTimePerOrder + ")");
-			info("      Memory: " + memory + " KB (AVG: " + averageMemoryUsage + " KB)");
-			info("    CPU load: " + trunc(cpu * 100) + " \t(AVG: " + trunc(averageCPU * 100 / memoryCount) + "%)");
+			double processed = manager.processed_orders;
+			double total_orders = manager.total_orders;
+            double per = manager.processed_orders / manager.total_orders;
+
+			manager.info("          Order: " + order_size + " \t" + "(AVG: " + averageTimePerOrder + ")");
+            manager.info("         Memory: " + memory + " KB (AVG: " + averageMemoryUsage + " KB)");
+            manager.info("       CPU load: " + trunc(cpu * 100) + " \t(AVG: " + trunc(averageCPU * 100 / memoryCount) + "%)");
+            manager.info(" OrderProcessed: " + processed + "  (" + trunc(per * 100) + "%)   " + " Total: " + total_orders);
 
 			if(memory > 1048576 ){
 				System.exit(0);
@@ -702,6 +715,7 @@ public class OrderManager extends Actor{
 
         @Override
         public void scheduledJob(){
+
             manager.stats.summary(manager.orders.size());
         }
     }

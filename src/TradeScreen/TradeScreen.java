@@ -1,5 +1,6 @@
 package TradeScreen;
 
+import Actor.Message;
 import OrderManager.Order;
 
 import java.io.IOException;
@@ -17,7 +18,7 @@ public interface TradeScreen {
         ANSSliceOrder,
     }
 
-    public void newOrder(int id, Order order)
+    public void newOrder(Message.NewOrder m)
             throws IOException;
 
     public void acceptOrder(int id)
@@ -26,6 +27,6 @@ public interface TradeScreen {
     public void sliceOrder(int id, int sliceSize)
             throws IOException;
 
-    public void price(int id, Order o)
+    public void price(Message.Price m)
             throws IOException;
 }

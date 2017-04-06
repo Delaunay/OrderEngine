@@ -25,6 +25,10 @@ import java.util.LinkedList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import Actor.Actor;
+import Actor.Message;
+
+
 /**
  * 			Order Manager listens to
  * 				- Clients
@@ -39,7 +43,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *		SampleTrader -> sliceOrder -> Cross -> RouteOrder
  *			   -> AcceptOrder -> Client
  */
-public class OrderManager extends HelperObject{
+public class OrderManager extends Actor{
 	// Orders being processed
     private ConcurrentHashMap<Integer, PendingOrder>
 			orders = new ConcurrentHashMap<>();
@@ -176,26 +180,17 @@ public class OrderManager extends HelperObject{
 			router = routers.get(router_id);
 
 			while (router.getInputStream().available() > 0) {
-				ObjectInputStream is = new ObjectInputStream(router.getInputStream());
-				Router.MessageKind method = (Router.MessageKind) is.readObject();
+				Message m = readMessage(router);
 
-				debug(" calling " + method);
+				debug(" calling " + m.op);
 
-				switch (method) {
+				switch (m.op) {
 					case ANSBestPrice:
-						int OrderId = is.readInt();
-						int SliceId = is.readInt();
-
-						Order slice = orders.get(OrderId).order.slices.get(SliceId);
-						slice.bestPrices[router_id] = is.readDouble();
-						slice.bestPriceCount += 1;
-
-						if (slice.bestPriceCount == slice.bestPrices.length)
-							routeOrder(SliceId, slice);
+						bestPrice(router_id, (Message.BestPrice) m);
 						break;
 
 					case ANSNewFill:
-						newFill(is.readInt(), is.readInt(), is.readInt(), is.readDouble());
+						newFill((Message.NewFill) m);
 						break;
 				}
                 work_was_done = true;
@@ -211,17 +206,15 @@ public class OrderManager extends HelperObject{
                 continue;
 
             while(trader.getInputStream().available() > 0) {
-                ObjectInputStream is = new ObjectInputStream(trader.getInputStream());
-                TradeScreen.MessageKind method = (TradeScreen.MessageKind) is.readObject();
+				Message m = readMessage(trader);
+                debug(" calling " + m.op);
 
-                debug(" calling " + method);
-
-                switch (method) {
+                switch (m.op) {
                     case ANSAcceptOrder:
-                        acceptOrder(is.readInt());
+                    	acceptOrder((Message.AcceptOrder) m);
                         break;
                     case ANSSliceOrder:
-                        sliceOrder(is.readInt(), is.readInt());
+                        sliceOrder((Message.SliceOrder) m);
                 }
                 work_was_done = true;
             }
@@ -229,33 +222,35 @@ public class OrderManager extends HelperObject{
 		return work_was_done;
 	}
 
+    void sendMessageToClient(int client_id, Message m){
+        ClientThread client = client_threads.get(client_id);
+        client.addMessage(m);
+    }
+
     void sendMessageToClient(int client_id, String message){
         ClientThread client = client_threads.get(client_id);
-        client.addMessage(message);
+        client.addMessage(new Message.FIXMessage(message));
     }
     
 	// Actions
 	// ----------------------------------------------------------------
-	protected void newOrder(int clientId, int clientOrderId, NewOrderSingle nos) throws IOException {
+
+
+	protected void newOrder(int clientId, int clientOrderId, Message.NewOrderSingle nos) throws IOException {
 
 		orders.put(id, new PendingOrder(new Order(clientId, id, nos.instrument, nos.size, clientOrderId)));
 
 		sendMessageToClient(clientId, "11=" + clientOrderId + ";35=A;39=A;");
-		sendOrderToTrader  (id, orders.get(id).order, TradeScreen.MessageKind.REQNewOrder);
+
+		sendMessage(getTrader(), new Message.NewOrderSingle(id, nos.instrument, nos.size, nos.price));
+
 		id++;
 	}
 
-	private void sendOrderToTrader(int id, Order o, Object method) throws IOException {
-		ObjectOutputStream ost = new ObjectOutputStream(getTrader().getOutputStream());
 
-			ost.writeObject(method);
-			ost.writeInt(id);
-			ost.writeObject(o);
-			ost.flush();
-	}
+	public void acceptOrder(Message.AcceptOrder m) throws IOException {
+		Order o = orders.get(m.order_id).order;
 
-	public void acceptOrder(int id) throws IOException {
-		Order o = orders.get(id).order;
 		if (o.OrdStatus != 'A') { // Pending New
 			error("error accepting order that has already been accepted");
 			return;
@@ -263,10 +258,10 @@ public class OrderManager extends HelperObject{
 		o.OrdStatus = '0'; // New
 
         sendMessageToClient(o.clientid, "11=" + o.client_order_id + ";35=A;39=0");
-		price(id, o);
+		price(m.order_id, o);
 	}
 
-	public void sliceOrder(int id, int sliceSize) throws IOException {
+	public void sliceOrder(Message.SliceOrder m) throws IOException {
 		PendingOrder po = orders.get(id);
 		LinkedList<Slice> slice = slices.get(po.order.instrument);
 
@@ -276,20 +271,21 @@ public class OrderManager extends HelperObject{
         }
 
 		int order_size = po.size_remain;
-		int slice_size = sliceSize;
+		int slice_size = m.order_id;
+
 		po.slice_num = 0;
 
 		while(order_size > 0){
 
 			if (order_size < slice_size)
-				sliceSize = order_size;
+				slice_size = order_size;
 
 			slice.add(new Slice(po, slice_size, po.order.initialMarketPrice));
 			order_size -= slice_size;
 			po.slice_num += 1;
 		}
 
-		debug("Order size: " + po.size_remain + " Slices: " + po.slice_num + " SliceSize:" + sliceSize);
+		debug("Order size: " + po.size_remain + " Slices: " + po.slice_num + " SliceSize:" + m.slice_size);
 
 		/*
     	Order o = orders.get(id).order;
@@ -337,20 +333,22 @@ public class OrderManager extends HelperObject{
 			o.cross(matchingOrder);
 
 			if (sizeBefore != o.sizeRemaining()) {
-				sendOrderToTrader(id, o, TradeScreen.MessageKind.REQCross);
+				sendMessage(getTrader(), new Message.Cross(id, o));
 			}
 		} */
 	}
 
-	private void newFill(int id, int sliceId, int size, double price) throws IOException {
-        PendingOrder po = orders.get(id);
+	// Incoming Router Messages
+	// ------------------------------------------------------------------------
+	private void newFill(Message.NewFill m) throws IOException {
+        PendingOrder po = orders.get(m.order_id);
 
 	    Order o = po.order;
-		o.slices.get(sliceId).createFill(size, price);
+		o.slices.get(m.slice_id).createFill(m.size, m.price);
 
 		po.slice_num -= 1;
-		po.size_remain -= size;
-        String message = "11=" + o.client_order_id + ";38=" + size + ";44=" + price;
+		po.size_remain -= m.size;
+        String message = "11=" + o.client_order_id + ";38=" + m.size + ";44=" + m.price;
 
 		if (o.sizeRemaining() == 0) {
             message = message + ";39=2";
@@ -361,9 +359,22 @@ public class OrderManager extends HelperObject{
         }
         // We should execute next slice
 
-		//sendOrderToTrader(id, o, TradeScreen.MessageKind.REQFill);
-        sendMessageToClient(o.clientid, message);
+		sendMessage(getTrader(), new Message.Fill(id, o));
+		sendMessageToClient(o.clientid, message);
 	}
+
+	void bestPrice(int router_id, Message.BestPrice m) throws IOException{
+		Order slice = orders.get(m.order_id).order.slices.get(m.slice_id);
+
+		slice.bestPrices[router_id] = m.price;
+		slice.bestPriceCount += 1;
+
+		if (slice.bestPriceCount == slice.bestPrices.length)
+			routeOrder(m.slice_id, slice);
+	}
+
+	// Outcoming Router Messages
+	// ------------------------------------------------------------------------
 
 	/** Ask for the best price to each router
 	 * 	@param id		Order id
@@ -373,14 +384,7 @@ public class OrderManager extends HelperObject{
 	 * 	*/
 	private void askBestPrice(int id, int sliceId, int size, Order order) throws IOException {
 		for (Socket r : routers) {
-
-			ObjectOutputStream os = new ObjectOutputStream(r.getOutputStream());
-				os.writeObject(Router.MessageKind.REQPriceAtSize);
-				os.writeInt(id);
-				os.writeInt(sliceId);
-				os.writeObject(order.instrument);
-				os.writeInt(order.sizeRemaining());
-				os.flush();
+			sendMessage(r, new Message.PriceAtSize(id, sliceId, order.instrument, size));
 		}
 
 		// need to wait for these prices to come back before routing
@@ -391,15 +395,10 @@ public class OrderManager extends HelperObject{
 	/** Buy/Sell the instrument at the min/max price possible */
 	private void routeOrder(int sliceId, Order o) throws IOException {
 		// if o.size < 0 => We are selling
-		int index = o.size > 0 ? getBestBuyPrice(o) : getBestSellPrice(o);
+		int size = o.sizeRemaining();
+		int index = size > 0 ? getBestBuyPrice(o) : getBestSellPrice(o);
 
-		ObjectOutputStream os = new ObjectOutputStream(routers.get(index).getOutputStream());
-			os.writeObject(Router.MessageKind.REQRouteOrder);
-			os.writeInt(o.id);
-			os.writeInt(sliceId);
-			os.writeInt(o.sizeRemaining());
-			os.writeObject(o.instrument);
-			os.flush();
+		sendMessage(routers.get(index), new Message.RouteOrder(o.id, sliceId, o.instrument, size));
 	}
 
 	// TODO
@@ -415,7 +414,7 @@ public class OrderManager extends HelperObject{
 
 	private void price(int id, Order o) throws IOException {
 		liveMarketData.setPrice(o);
-		sendOrderToTrader(id, o, TradeScreen.MessageKind.REQPrice);
+		sendMessage(getTrader(), new Message.Price(id, o));
 	}
 
 	// Utilities

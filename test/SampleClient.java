@@ -1,3 +1,4 @@
+import Actor.Message;
 import OrderClient.Client;
 import OrderClient.NewOrderSingle;
 import OrderManager.Order;
@@ -41,13 +42,11 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
 
     public SampleClient(int print_delta_,
                         int initial_orders_,
-                        InetSocketAddress om_address)
-    {
+                        InetSocketAddress om_address) {
         super(om_address);
         initLog(this.getClass().getName());
         print_delta = print_delta_;
         initial_orders = initial_orders_;
-
     }
     
     void connectToOrderManager(InetSocketAddress address) throws IOException{
@@ -87,12 +86,7 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
         OUT_QUEUE.put(id, nos);
 
         if(order_manager.isConnected()){
-            ObjectOutputStream os = new ObjectOutputStream(order_manager.getOutputStream());
-            os.writeObject(MessageKind.ANSNewOrder);
-            //os.writeObject("35=D;"); // is this a delete ?
-            os.writeInt(id);
-            os.writeObject(nos);
-            os.flush();
+            sendMessage(order_manager, new Message.NewOrderSingle(id, nos.instrument, nos.size, nos.price));
         }
         return id++;
     }
@@ -102,15 +96,7 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
         debug("SC: sendCancel: id=" + idToCancel);
 
         if(order_manager.isConnected()){
-            try {
-                ObjectOutputStream os = new ObjectOutputStream(order_manager.getOutputStream());
-                os.writeObject(MessageKind.ANSCancel);
-                os.writeInt(idToCancel);
-                //order_managerection.sendMessage("cancel",idToCancel);
-            }
-            catch (IOException e){
-                e.printStackTrace();
-            }
+            sendMessage(order_manager, new Message.CancelOrder(idToCancel));
         }
     }
 
@@ -161,41 +147,40 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
     /** Print out a summary of the Client, outstanding orders*/
     public void summary(){
         debug(Thread.currentThread().getName() + " has: " + OUT_QUEUE.size() + " outstanding orders");
-
-        /*
-        for(Map.Entry item : OUT_QUEUE.entrySet()){
-            Utility.Util.print("id = " + item.getKey() + ", Order = " + item.getValue());
-        } */
     }
 
     public boolean readMessage() throws IOException, ClassNotFoundException{
         while(order_manager.getInputStream().available() > 0){
-            is = new ObjectInputStream(order_manager.getInputStream());
 
-            String fix = (String) is.readObject();
+            Message m = readMessage(order_manager);
 
-            debug("SC: " + Thread.currentThread().getName() + " received fix message: " + fix);
+            if (m == null || m.op != Message.MessageKind.FIXMessage){
+                error("unsupported operation");
+            }
 
-            String[] fixTags=fix.split(";");
+            Message.FIXMessage fm = (Message.FIXMessage) m;
 
-            FIXMessage m = readOrderManagerAnswer(fixTags);
+            String[] fixTags= fm.message.split(";");
+            FIXMessage ret = readOrderManagerAnswer(fixTags);
 
-            switch (m.OrdStatus){
-                case '0': newOrderPending (m); return true;
-                case '1': orderPartialFill(m); return true;
-                case '2': orderfullFill   (m); return true;
+            debug("SC: " + Thread.currentThread().getName() + " received fix message: " + fm.message);
+
+            switch (ret.OrdStatus){
+                case '0': newOrderPending (fm); return true;
+                case '1': orderPartialFill(fm); return true;
+                case '2': orderfullFill   (fm); return true;
             }
         }
         return false;
     }
 
-    void newOrderPending(FIXMessage m ){
+    void newOrderPending(Message.FIXMessage m ){
         //info("-----NewOrderPending-----");
     }
-    void orderPartialFill(FIXMessage m ){
+    void orderPartialFill(Message.FIXMessage m ){
         //info("-----PartialFill-----");
     }
-    void orderfullFill(FIXMessage m ){
+    void orderfullFill(Message.FIXMessage m ){
         //info("-----FullFill-----");
     }
 

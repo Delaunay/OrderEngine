@@ -1,3 +1,4 @@
+import Actor.Message;
 import OrderManager.Order;
 import TradeScreen.TradeScreen;
 import Utility.Connection.ConnectionType;
@@ -22,20 +23,17 @@ public class SampleTrader extends OrderManagerClient implements TradeScreen, Run
 
 	public
     boolean readMessage() throws IOException, ClassNotFoundException{
-        while(order_manager.getInputStream().available() > 0){
-            is = new ObjectInputStream(order_manager.getInputStream());
+        while(isAvailable()){
 
-            TradeScreen.MessageKind  method  = (TradeScreen.MessageKind) is.readObject();
-            int   id                         = is.readInt();
-            Order order                      = (Order) is.readObject();
+            Message message = readMessage(order_manager);
 
-            debug("called " + method);
+            debug("called " + message.op);
 
-            switch(method){
-                case REQNewOrder: newOrder(id, order); return true;
-                case REQPrice   :    price(id, order); return true;
-                case REQCross   :    cross(id, order); return true;
-                case REQFill    :     fill(id, order); return true;
+            switch(message.op){
+                case REQNewOrder: newOrder((Message.NewOrder) message); return true;
+                case REQPrice   :    price((Message.Price) message); return true;
+                case REQCross   :    cross((Message.Cross) message); return true;
+                case REQFill    :     fill((Message.Fill)  message); return true;
             }
         }
         return false;
@@ -67,42 +65,35 @@ public class SampleTrader extends OrderManagerClient implements TradeScreen, Run
     // ------------------------------------------------------------------------
 
     // TODO
-    void cross(int id, Order o){
+    void cross(Message.Cross message){
         debug("CROSS");
     }
 
     // TODO
-    void fill(int id, Order o){
+    void fill(Message.Fill message){
         debug("FILL");
     }
 
 	@Override
-	public void newOrder(int id,Order order) throws IOException{
+	public void newOrder(Message.NewOrder m) throws IOException{
 		// TODO the order should go in a visual grid, but not needed for test purposes
-		orders.put(id, order);
-		acceptOrder(id);
+		orders.put(m.order_id, m.order);
+		acceptOrder(m.order_id);
 	}
 
 	@Override
 	public void acceptOrder(int id) throws IOException {
-        os = new ObjectOutputStream(order_manager.getOutputStream());
-            os.writeObject(MessageKind.ANSAcceptOrder);
-            os.writeInt(id);
-            os.flush();
+        sendMessage(order_manager, new Message.AcceptOrder(id));
 	}
 
 	@Override
 	public void sliceOrder(int id, int sliceSize) throws IOException {
-		os = new ObjectOutputStream(order_manager.getOutputStream());
-            os.writeObject(MessageKind.ANSSliceOrder);
-            os.writeInt(id);
-            os.writeInt(sliceSize);
-            os.flush();
+        sendMessage(order_manager, new Message.SliceOrder(id, sliceSize));
 	}
 	@Override
-	public void price(int id, Order o) throws IOException {
+	public void price(Message.Price m) throws IOException {
 		//TODO should update the trade screen
 		//wait(2134);
-		sliceOrder(id, MockConfig.slice_size);
+		sliceOrder(m.order_id, MockConfig.slice_size);
 	}
 }

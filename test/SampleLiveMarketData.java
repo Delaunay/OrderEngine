@@ -2,6 +2,7 @@ import LiveMarketData.LiveMarketData;
 import OrderManager.Order;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Random;
@@ -9,7 +10,7 @@ import java.util.Random;
 //TODO this should really be in its own thread
 // Why ? It is not like it is doing anything...
 // no event loop
-public class SampleLiveMarketData extends Thread implements LiveMarketData {
+public class SampleLiveMarketData extends OrderManagerClient implements LiveMarketData, Runnable {
     private static final Random RANDOM_NUM_GENERATOR = new Random();
     private Socket omConn;
 
@@ -27,7 +28,10 @@ public class SampleLiveMarketData extends Thread implements LiveMarketData {
     public void connectToOrderManager(int port) throws IOException {
         //OM will connect to us
         omConn = new ServerSocket(port).accept();
-        //log.info("SC: OM connected to live market port " + port);
+    }
+
+    SampleLiveMarketData(){
+        super(new InetSocketAddress(2000));
     }
 
     @Override

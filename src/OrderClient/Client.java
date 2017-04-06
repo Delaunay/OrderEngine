@@ -5,17 +5,6 @@ import OrderManager.Order;
 import java.io.IOException;
 
 public interface Client {
-    public enum MessageKind {
-        // OrderManager -> Client
-        REQPartialFill,
-        REQFullyFilled,
-        REQCancelled,
-        FIXMessage,
-
-        // Client -> OrderManager
-        ANSNewOrder,
-        ANSCancel,
-    }
     // Outgoing messages
     int sendOrder(NewOrderSingle nos) throws IOException;
 

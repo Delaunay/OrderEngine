@@ -6,17 +6,6 @@ import Ref.Instrument;
 import java.io.IOException;
 
 public interface Router {
-    public enum MessageKind {
-        // OrderManager -> Router
-        REQPriceAtSize,
-        REQRouteOrder,
-        REQCancel,
-
-        // Router -> OrderManager
-        ANSBestPrice,
-        ANSNewFill,
-    }
-
     public void routeOrder(Message.RouteOrder m)
             throws IOException;
 

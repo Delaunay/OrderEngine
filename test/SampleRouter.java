@@ -1,31 +1,17 @@
+import Actor.Message;
 import OrderRouter.Router;
 import Ref.Instrument;
-import Ref.Ric;
 import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
-import Actor.Message;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 
 public class SampleRouter extends OrderManagerClient implements Router, Runnable {
-    private static final Instrument[] INSTRUMENTS = {
-            new Instrument(new Ric("VOD.L")),
-            new Instrument(new Ric("BP.L")),
-            new Instrument(new Ric("BT.L"))
-    };
-
-    private ObjectInputStream  is;
-    private ObjectOutputStream os;
-
-
     public SampleRouter(InetSocketAddress om_address) {
         super(om_address);
         initLog(this.getClass().getName());
     }
-    
 
     public void connectToOrderManager(InetSocketAddress address) throws IOException{
         connectToOrderManager(ConnectionType.RouterConnection, address);

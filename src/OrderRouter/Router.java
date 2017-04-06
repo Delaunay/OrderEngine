@@ -1,7 +1,8 @@
 package OrderRouter;
 
-import Ref.Instrument;
 import Actor.Message;
+import Ref.Instrument;
+
 import java.io.IOException;
 
 public interface Router {

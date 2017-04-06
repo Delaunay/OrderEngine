@@ -1,7 +1,6 @@
 package TradeScreen;
 
 import Actor.Message;
-import OrderManager.Order;
 
 import java.io.IOException;
 

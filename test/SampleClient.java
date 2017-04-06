@@ -3,26 +3,16 @@ import OrderClient.Client;
 import OrderClient.NewOrderSingle;
 import OrderManager.Order;
 import Ref.Instrument;
-import Ref.Ric;
 import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
 import Utility.Util;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
-import java.util.Random;
 
 public class SampleClient extends OrderManagerClient implements Client, Runnable {
-    private static final Random RANDOM_NUM_GENERATOR = new Random();
-    private static final Instrument[] INSTRUMENTS = {
-            new Instrument(new Ric("VOD.L")),
-            new Instrument(new Ric("BP.L")),
-            new Instrument(new Ric("BT.L"))
-    };
-
     // queue for outgoing orders
     private HashMap<Integer, NewOrderSingle> OUT_QUEUE = new HashMap<>();
     // message id number used as a `primary key` thats why it is static
@@ -71,10 +61,10 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
     }
 
     public int sendOrder() throws IOException{
-        int size   = 1000; //RANDOM_NUM_GENERATOR.nextInt(5000);
-        int instid = RANDOM_NUM_GENERATOR.nextInt(3);   // instrument id
+        int size   = MockConfig.getClientOrderSize();
+        int instid = MockConfig.getAssetID();
 
-        Instrument instrument = INSTRUMENTS[instid];
+        Instrument instrument = MockConfig.getInstrument(instid);
         NewOrderSingle nos = new NewOrderSingle(size, instid, instrument);
         return sendOrder(nos);
     }
@@ -116,7 +106,6 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
         debug(" Cancelled" + order);
         OUT_QUEUE.remove(order.id);
     }
-
 
     /** Print out a summary of the Client, outstanding orders*/
     public void summary(){

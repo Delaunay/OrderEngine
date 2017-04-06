@@ -1,5 +1,5 @@
-import Utility.Connection.ConnectionType;
 import Actor.Actor;
+import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
 
 import java.io.IOException;

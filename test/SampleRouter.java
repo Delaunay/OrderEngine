@@ -4,12 +4,21 @@ import Ref.Instrument;
 import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
 
+import javax.net.ServerSocketFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
 public class SampleRouter extends OrderManagerClient implements Router, Runnable {
+    int port = 0;
+
     public SampleRouter(InetSocketAddress om_address) {
         super(om_address);
+        initLog(this.getClass().getName());
+    }
+
+    public SampleRouter(int port_) {
+        super(null);
+        port = port_;
         initLog(this.getClass().getName());
     }
 
@@ -17,9 +26,13 @@ public class SampleRouter extends OrderManagerClient implements Router, Runnable
         connectToOrderManager(ConnectionType.RouterConnection, address);
     }
 
+
     @Override
     public void run() {
         try {
+            if (order_manager_address == null)
+                connectIndirectConnect(port);
+
             if (order_manager == null)
                 connectToOrderManager(order_manager_address);
 
@@ -53,7 +66,7 @@ public class SampleRouter extends OrderManagerClient implements Router, Runnable
                     break;
 
                 default:
-                    error("unsupported operation");
+                    error("unsupported operation"  + m.op);
                     break;
             }
         }

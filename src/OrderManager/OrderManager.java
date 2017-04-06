@@ -11,8 +11,7 @@ import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
 import com.sun.management.OperatingSystemMXBean;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
+import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -30,14 +29,18 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * 				- Clients
  * 				- TradingEngine (SampleTrader)
  * 				- Routers       (Markets)
- *
+ * <p>
+ * <pre>
+ *     {@code
  *		Clients -> newOrder -> SampleTrader
  *
  *		Router -> newFill -> SampleTrader
  *			   -> BestPrice -> ReallyRouteOrder -> Router
  *
  *		SampleTrader -> sliceOrder -> Cross -> RouteOrder
- *			   -> AcceptOrder -> Client
+ *			         -> AcceptOrder -> Client}
+ * </p>
+ * </pre>
  */
 public class OrderManager extends Actor{
 	// Orders being processed
@@ -72,22 +75,40 @@ public class OrderManager extends Actor{
         }
     }
 
-    public OrderManager(int port, LiveMarketData liveData)
-	{
-		try {
-			serverSocket = ServerSocketChannel.open();
-			serverSocket.bind(new InetSocketAddress(port));
-			serverSocket.configureBlocking(false);
-		} catch (IOException e){
-			error("Could not bind socket to port");
-			System.exit(1);
-		}
+    void init(int port, LiveMarketData liveData){
+        try {
+            serverSocket = ServerSocketChannel.open();
+            serverSocket.bind(new InetSocketAddress(port));
+            serverSocket.configureBlocking(false);
+        } catch (IOException e){
+            error("Could not bind socket to port");
+            System.exit(1);
+        }
 
         initLog(this.getClass().getName());
         liveMarketData = liveData ;
+    }
 
-        // We probably have a fixed number of markets
-        // connectToRouters(routers);
+    public OrderManager(int port, LiveMarketData liveData)
+    {
+        init(port, liveData);
+    }
+
+    public OrderManager(int port, LiveMarketData liveData, InetSocketAddress[] traders)
+    {
+        init(port, liveData);
+        try{
+            connectToTraders(traders);
+        } catch (InterruptedException e){}
+    }
+
+    public OrderManager(int port, LiveMarketData liveData, InetSocketAddress[] traders, InetSocketAddress[] routers)
+    {
+        init(port, liveData);
+        try{
+            connectToTraders(traders);
+            connectToRouters(routers);
+        } catch (InterruptedException e){}
     }
 
 
@@ -118,7 +139,6 @@ public class OrderManager extends Actor{
 
         debug("PendingOrders: " + size);
 
-        // avoid sending too much in one shot so Trader's buffer dont get fill
         while(pno != null && k < 50){
             try {
                 this.newOrder(pno.client_id, pno.client_order_id, pno.new_order);
@@ -135,15 +155,14 @@ public class OrderManager extends Actor{
         ScheduledPrint sp = new ScheduledPrint(print_delta, this);
 
 		while(true){
+            if (pending_new_orders.size() > 0)
+                runPendingNewOrders();
 
 		    try {
                 acceptConnection();
             } catch (IOException e){
 		    	error("Failed to connect to a client");
             }
-
-            if (pending_new_orders.size() > 0)
-                runPendingNewOrders();
 
 			try {
 				runOnce();
@@ -177,7 +196,7 @@ public class OrderManager extends Actor{
             {
 				Message m = readMessage(router);
 
-				debug(" calling " + m.op);
+				info(" calling " + m.op);
 
 				switch (m.op) {
 					case ANSBestPrice:
@@ -189,7 +208,7 @@ public class OrderManager extends Actor{
 						break;
 
                     default:
-                        error("unsupported operation");
+                        error("Router: unsupported operation: " + m.op);
                         break;
 				}
                 work_was_done = true;
@@ -203,12 +222,14 @@ public class OrderManager extends Actor{
 
         for (int trader_id = 0; trader_id < traders.size(); trader_id++) {
             Socket trader = traders.get(trader_id);
-            
+
+            //info(" " + trader);
+
             if(trader.getInputStream().available() > 0)
             {
 				Message m = readMessage(trader);
 
-                info(" calling " + m.op);
+                debug(" calling " + m.op);
 
                 switch (m.op) {
                     case ANSAcceptOrder:
@@ -216,8 +237,9 @@ public class OrderManager extends Actor{
                         break;
                     case ANSSliceOrder:
                         sliceOrder((Message.TraderSliceOrder) m);
+                        break;
                     default:
-                        error("unsupported operation");
+                        error("Trader: unsupported operation: " + m.op);
                         break;
                 }
                 work_was_done = true;
@@ -254,12 +276,12 @@ public class OrderManager extends Actor{
 		o.OrdStatus = '0'; // New
 
         sendMessageToClient(o.clientid, "11=" + o.client_order_id + ";35=A;39=0");
-        info("GEtting the price for the order");
         price(m.order_id, o);
 	}
 
 	public void sliceOrder(Message.TraderSliceOrder m) throws IOException {
-		PendingOrder po = orders.get(id);
+		PendingOrder po = orders.get(m.order_id);
+		Order o = po.order;
 		LinkedList<Slice> slice = slices.get(po.order.instrument);
 
 		if (slice == null) {
@@ -268,7 +290,7 @@ public class OrderManager extends Actor{
         }
 
 		int order_size = po.size_remain;
-		int slice_size = m.order_id;
+		int slice_size = m.slice_size;
 
 		po.slice_num = 0;
 
@@ -277,7 +299,10 @@ public class OrderManager extends Actor{
 			if (order_size < slice_size)
 				slice_size = order_size;
 
+			o.newSlice(slice_size);
 			slice.add(new Slice(po, slice_size, po.order.initialMarketPrice));
+            askBestPrice(m.order_id, po.slice_num, slice_size, o.slices.get(po.slice_num));
+
 			order_size -= slice_size;
 			po.slice_num += 1;
 		}
@@ -338,7 +363,7 @@ public class OrderManager extends Actor{
 	Order getNextSlice(Order order, int slice_id){
         ArrayList<Order> slices = order.slices;
 
-        if (slice_id < slices.size()){
+        if (slice_id + 1 < slices.size()){
             return slices.get(slice_id + 1);
         }
         return null;
@@ -357,16 +382,19 @@ public class OrderManager extends Actor{
 
         String message = "11=" + o.client_order_id + ";38=" + m.size + ";44=" + m.price;
 
+
 		if (o.sizeRemaining() == 0) {
             message = message + ";39=2";
 			Database.write(o);
-			debug("------------DONE--------------");
 		} else {
             message = message + ";39=1";
         }
+
         // We should execute next slice
         Order next = getNextSlice(o, m.slice_id);
+		if (next != null){
 
+        }
 
 		sendMessage(getTrader(), new Message.TraderFill(id, o));
 		sendMessageToClient(o.clientid, message);
@@ -489,22 +517,32 @@ public class OrderManager extends Actor{
 		try {
 			ObjectInputStream is = new ObjectInputStream(con.getInputStream());
 			ConnectionType type = (ConnectionType) is.readObject();
+
 			switch (type) {
 				case TraderConnection:
-					addTraderConnection(con);
-					return;
+                    acceptConnection(con);
+					addTraderConnection(con); break;
 				case ClientConnection:
-					addClientConnection(con);
-					return;
+                    acceptConnection(con);
+					addClientConnection(con); break;
 				case RouterConnection:
-					addRouterConnection(con);
-					return;
+                    acceptConnection(con);
+					addRouterConnection(con); break;
 			}
 		} catch (ClassNotFoundException e){
 			error("Connection Type unknown");
 		}
-
 	}
+
+	void acceptConnection(Socket con){
+	    try {
+            ObjectOutputStream os = new ObjectOutputStream(con.getOutputStream());
+            os.writeObject(ConnectionType.Accept);
+        } catch (IOException e){
+	        error("Could not send confirmation");
+	        e.printStackTrace();
+        }
+    }
 
 	void addTraderConnection(Socket trader){
 		int size = traders.size();
@@ -551,11 +589,17 @@ public class OrderManager extends Actor{
 		return null;
 	}
 
-	public void connectToRouters(InetSocketAddress[] orderRouters) throws InterruptedException{
-		for (InetSocketAddress location : orderRouters) {
-			routers.add(connect(location));
-		}
-	}
+    public void connectToRouters(InetSocketAddress[] orderRouters) throws InterruptedException{
+        for (InetSocketAddress location : orderRouters) {
+            routers.add(connect(location));
+        }
+    }
+
+    public void connectToTraders(InetSocketAddress[] orderRouters) throws InterruptedException{
+        for (InetSocketAddress location : orderRouters) {
+            traders.add(connect(location));
+        }
+    }
 
 	//		Runtime statistics about OrderManager
 	// ------------------------------------------------------------------------

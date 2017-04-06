@@ -11,7 +11,7 @@ class ClientThread extends Actor implements Runnable {
 	private int client_id;
 	private Socket client;
 	private OrderManager order_manager;
-	private ConcurrentLinkedQueue<Message> pending_messages;
+
 
 	ClientThread(int clientId, Socket client, OrderManager oM) {
 		this.client_id = clientId;
@@ -19,23 +19,6 @@ class ClientThread extends Actor implements Runnable {
 		this.order_manager = oM;
 		initLog(this.getClass().getName());
 		pending_messages = new ConcurrentLinkedQueue<>();
-	}
-
-	void addMessage(Message m){
-		pending_messages.add(m);
-	}
-
-	void sendMessages(){
-		// send message
-		int k = 0;
-		int size = pending_messages.size();
-		Message message = pending_messages.poll();
-
-		while(message != null && k < size){
-			sendMessage(client, message);
-			message = pending_messages.poll();
-			k += 1;
-		}
 	}
 
 	public static class PendingNewOrder{
@@ -49,6 +32,25 @@ class ClientThread extends Actor implements Runnable {
 		}
 	}
 
+    private ConcurrentLinkedQueue<Message> pending_messages;
+
+    void addMessage(Message m){
+        pending_messages.add(m);
+    }
+
+    void sendMessages(){
+        // send message
+        int k = 0;
+        int size = pending_messages.size();
+        Message message = pending_messages.poll();
+
+        while(message != null && k < size){
+            sendMessage(client, message);
+            message = pending_messages.poll();
+            k += 1;
+        }
+    }
+
 	@Override
 	public void run() {
 		while (true) {
@@ -56,6 +58,10 @@ class ClientThread extends Actor implements Runnable {
 				sendMessages();
 
 			Message m = readMessage(client);
+
+			if (m == null)
+				error("was not able to read message from client");
+
 			debug(" calling " + m.op);
 
 			switch (m.op) {
@@ -66,7 +72,7 @@ class ClientThread extends Actor implements Runnable {
 				case ANSCancel:
 					break;
 				default:
-					error("unsupported operation");
+					error("unsupported operation" + m.op);
 					break;
 			}
 

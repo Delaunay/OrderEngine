@@ -24,23 +24,15 @@ import java.net.Socket;
  * </p>
  */
 public abstract class Actor extends HelperObject{
-    public boolean messageDispatcher(){
-        return false;
-    }
-
-    public boolean isAvailable(){
-        try {
-            return connection().getInputStream().available() > 0;
-        } catch (IOException e){
-            return false;
-        }
-    }
-
     public Socket connection(){
         return null;
     }
 
     final public void sendMessage(Socket soc, Message m){
+        if (m == null){
+            error("Trying to send a `null` message");
+            return;
+        }
         try {
             ObjectOutputStream os = new ObjectOutputStream(soc.getOutputStream());
                 os.writeObject(m);
@@ -65,6 +57,14 @@ public abstract class Actor extends HelperObject{
         return null;
     }
 
-
-
+    public boolean messageDispatcher(){
+        return false;
+    }
+    public boolean isAvailable(){
+        try {
+            return connection().getInputStream().available() > 0;
+        } catch (IOException e){
+            return false;
+        }
+    }
 }

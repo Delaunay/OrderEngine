@@ -8,7 +8,6 @@ import Utility.HelperObject;
 import Utility.Util;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 
@@ -18,7 +17,6 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
     // message id number used as a `primary key` thats why it is static
     // Although this needs to change, the id should be given by the OrderManager not the client
     private static int 		     id = 0;
-    private ObjectInputStream    is;
     private int                  print_delta = 1000;
     private int                  initial_orders = 0;
 
@@ -118,7 +116,7 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
             Message m = readMessage(order_manager);
 
             if (m == null || m.op != Message.MessageKind.FIXMessage){
-                error("unsupported operation");
+                error("unsupported operation" + m.op);
             }
 
             Message.FIXMessage fm = (Message.FIXMessage) m;

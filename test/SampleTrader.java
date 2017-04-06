@@ -5,17 +5,28 @@ import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
 import org.apache.log4j.Level;
 
+import javax.net.ServerSocketFactory;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.util.HashMap;
 
 public class SampleTrader extends OrderManagerClient implements TradeScreen, Runnable{
 	private HashMap<Integer,Order> orders = new HashMap<>();
-
+    private InputStream            is;
+    private Integer                port = null;
 
     public SampleTrader(InetSocketAddress om_address){
-		super(om_address);
+        super(om_address);
         initLog(this.getClass().getName());
+        //classLog.setLevel(Level.DEBUG);
+    }
+
+    public SampleTrader(int port_){
+        super(null);
+        initLog(this.getClass().getName());
+        port = port_;
         //classLog.setLevel(Level.DEBUG);
     }
 
@@ -29,11 +40,11 @@ public class SampleTrader extends OrderManagerClient implements TradeScreen, Run
 
             switch(message.op){
                 case REQNewOrder: newOrder((Message.TraderNewOrder) message); break;
-                case REQPrice   :    price((Message.TraderPrice) message); break;
-                case REQCross   :    cross((Message.TraderCross) message); break;
-                case REQFill    :     fill((Message.TraderFill)  message); break;
+                case REQPrice   :    price((Message.TraderPrice) message);    break;
+                case REQCross   :    cross((Message.TraderCross) message);    break;
+                case REQFill    :     fill((Message.TraderFill)  message);    break;
                 default:
-                    error("unsupported operation");
+                    error("unsupported operation" + message.op);
                     break;
             }
         }
@@ -47,6 +58,9 @@ public class SampleTrader extends OrderManagerClient implements TradeScreen, Run
 	public void run(){
 		//OM will connect to us
 		try {
+		    if (port != null)
+                connectIndirectConnect(port);
+
 			if (order_manager == null)
                 connectToOrderManager(order_manager_address);
 

@@ -46,11 +46,15 @@ public class SampleRouter extends OrderManagerClient implements Router, Runnable
             switch (m.op) {
                 case REQRouteOrder:
                     routeOrder((Message.RouteOrder) m);
-                    return true;
+                    break;
 
                 case REQPriceAtSize:
                     priceAtSize((Message.PriceAtSize) m);
-                    return true;
+                    break;
+
+                default:
+                    error("unsupported operation");
+                    break;
             }
         }
         return false;

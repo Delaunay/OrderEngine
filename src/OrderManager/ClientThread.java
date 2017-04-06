@@ -65,6 +65,9 @@ class ClientThread extends Actor implements Runnable {
 					break;
 				case ANSCancel:
 					break;
+				default:
+					error("unsupported operation");
+					break;
 			}
 
 			sleep(10);

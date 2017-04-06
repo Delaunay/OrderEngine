@@ -58,6 +58,7 @@ public abstract class Actor extends HelperObject{
         } catch (IOException e){
             e.printStackTrace();
         } catch (ClassNotFoundException e){
+            error("Could not cast object to message");
             e.printStackTrace();
         }
         return null;

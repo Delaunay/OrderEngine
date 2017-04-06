@@ -30,13 +30,16 @@ public class SampleTrader extends OrderManagerClient implements TradeScreen, Run
             debug("called " + message.op);
 
             switch(message.op){
-                case REQNewOrder: newOrder((Message.NewOrder) message); return true;
-                case REQPrice   :    price((Message.Price) message); return true;
-                case REQCross   :    cross((Message.Cross) message); return true;
-                case REQFill    :     fill((Message.Fill)  message); return true;
+                case REQNewOrder: newOrder((Message.TraderNewOrder) message); break;
+                case REQPrice   :    price((Message.TraderPrice) message); break;
+                case REQCross   :    cross((Message.TraderCross) message); break;
+                case REQFill    :     fill((Message.TraderFill)  message); break;
+                default:
+                    error("unsupported operation");
+                    break;
             }
         }
-        return false;
+        return true;
     }
 
     public void connectToOrderManager(InetSocketAddress address) throws IOException{
@@ -65,17 +68,17 @@ public class SampleTrader extends OrderManagerClient implements TradeScreen, Run
     // ------------------------------------------------------------------------
 
     // TODO
-    void cross(Message.Cross message){
+    void cross(Message.TraderCross message){
         debug("CROSS");
     }
 
     // TODO
-    void fill(Message.Fill message){
+    void fill(Message.TraderFill message){
         debug("FILL");
     }
 
 	@Override
-	public void newOrder(Message.NewOrder m) throws IOException{
+	public void newOrder(Message.TraderNewOrder m) throws IOException{
 		// TODO the order should go in a visual grid, but not needed for test purposes
 		orders.put(m.order_id, m.order);
 		acceptOrder(m.order_id);
@@ -83,15 +86,15 @@ public class SampleTrader extends OrderManagerClient implements TradeScreen, Run
 
 	@Override
 	public void acceptOrder(int id) throws IOException {
-        sendMessage(order_manager, new Message.AcceptOrder(id));
+        sendMessage(order_manager, new Message.TraderAcceptOrder(id));
 	}
 
 	@Override
 	public void sliceOrder(int id, int sliceSize) throws IOException {
-        sendMessage(order_manager, new Message.SliceOrder(id, sliceSize));
+        sendMessage(order_manager, new Message.TraderSliceOrder(id, sliceSize));
 	}
 	@Override
-	public void price(Message.Price m) throws IOException {
+	public void price(Message.TraderPrice m) throws IOException {
 		//TODO should update the trade screen
 		//wait(2134);
 		sliceOrder(m.order_id, MockConfig.slice_size);

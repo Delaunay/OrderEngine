@@ -43,9 +43,10 @@ public class MockConfig {
 
 
     static int getClientOrderSize(){
-        if (client_count++ % 2 == 0)
-            return -500;
-        return 500;
+        return 1000;
+        //if (client_count++ % 2 == 0)
+        //    return 500;
+        //return 500;
         //return allow_randomness * (RANDOM_NUM_GENERATOR.nextInt(1000) - 500);
     }
 

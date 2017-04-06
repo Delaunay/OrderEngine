@@ -196,63 +196,64 @@ public class Message implements Serializable{
 
     //      Trader
     // ------------------------------------------------------------------------
-    public static class NewOrder extends Message{
+    public static class TraderNewOrder extends Message{
         public int   order_id;
         public Order order;
 
-        public NewOrder(int order_id_, Order order_){
+        public TraderNewOrder(int order_id_, Order order_){
+            op       = MessageKind.REQNewOrder;
             order_id = order_id_;
             order    = order_;
         }
     }
 
-    public static class Price extends Message{
+    public static class TraderPrice extends Message{
         public int   order_id;
         public Order order;
 
-        public Price(int order_id_, Order order_){
+        public TraderPrice(int order_id_, Order order_){
             op       = MessageKind.REQPrice;
             order_id = order_id_;
             order    = order_;
         }
     }
 
-    public static class Fill extends Message{
+    public static class TraderFill extends Message{
         public int   order_id;
         public Order order;
 
-        public Fill(int order_id_, Order order_){
+        public TraderFill(int order_id_, Order order_){
             op       = MessageKind.REQFill;
             order_id = order_id_;
             order    = order_;
         }
     }
 
-    public static class Cross extends Message{
+    public static class TraderCross extends Message{
         public int   order_id;
         public Order order;
 
-        public Cross(int order_id_, Order order_){
+        public TraderCross(int order_id_, Order order_){
             op       = MessageKind.REQCross;
             order_id = order_id_;
             order    = order_;
         }
     }
 
-    public static class AcceptOrder extends Message{
+    public static class TraderAcceptOrder extends Message{
         public int order_id;
 
-        public AcceptOrder(int order_id_){
+        public TraderAcceptOrder(int order_id_){
             op       = MessageKind.ANSAcceptOrder;
             order_id = order_id_;
         }
     }
 
-    public static class SliceOrder extends Message{
+    public static class TraderSliceOrder extends Message{
         public int order_id;
         public int slice_size;
 
-        public SliceOrder(int order_id_, int slice_size_){
+        public TraderSliceOrder(int order_id_, int slice_size_){
             op          = MessageKind.ANSSliceOrder;
             order_id    = order_id_;
             slice_size  = slice_size_;

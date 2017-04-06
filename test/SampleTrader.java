@@ -3,27 +3,25 @@ import OrderManager.Order;
 import TradeScreen.TradeScreen;
 import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
+import org.apache.log4j.Level;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 
 public class SampleTrader extends OrderManagerClient implements TradeScreen, Runnable{
 	private HashMap<Integer,Order> orders = new HashMap<>();
 
-    private ObjectInputStream  	is;
-    private ObjectOutputStream 	os;
 
     public SampleTrader(InetSocketAddress om_address){
 		super(om_address);
         initLog(this.getClass().getName());
+        //classLog.setLevel(Level.DEBUG);
     }
 
 	public
     boolean readMessage() throws IOException, ClassNotFoundException{
-        while(isAvailable()){
+        while(order_manager.getInputStream().available() > 0){
 
             Message message = readMessage(order_manager);
 
@@ -86,17 +84,20 @@ public class SampleTrader extends OrderManagerClient implements TradeScreen, Run
 
 	@Override
 	public void acceptOrder(int id) throws IOException {
+        debug("Accepting Orders");
         sendMessage(order_manager, new Message.TraderAcceptOrder(id));
 	}
 
 	@Override
 	public void sliceOrder(int id, int sliceSize) throws IOException {
+        debug("Slicing Orders");
         sendMessage(order_manager, new Message.TraderSliceOrder(id, sliceSize));
 	}
 	@Override
 	public void price(Message.TraderPrice m) throws IOException {
 		//TODO should update the trade screen
 		//wait(2134);
+        debug("Price");
 		sliceOrder(m.order_id, MockConfig.slice_size);
 	}
 }

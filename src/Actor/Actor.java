@@ -43,10 +43,10 @@ public abstract class Actor extends HelperObject{
     final public void sendMessage(Socket soc, Message m){
         try {
             ObjectOutputStream os = new ObjectOutputStream(soc.getOutputStream());
-            os.writeObject(m);
-            os.flush();
-
+                os.writeObject(m);
+                os.flush();
         } catch (IOException e){
+            error("Could not write to Stream");
             e.printStackTrace();
         }
     }
@@ -56,6 +56,7 @@ public abstract class Actor extends HelperObject{
             ObjectInputStream is = new ObjectInputStream(soc.getInputStream());
             return (Message) is.readObject();
         } catch (IOException e){
+            error("Could not read Stream");
             e.printStackTrace();
         } catch (ClassNotFoundException e){
             error("Could not cast object to message");
@@ -63,4 +64,7 @@ public abstract class Actor extends HelperObject{
         }
         return null;
     }
+
+
+
 }

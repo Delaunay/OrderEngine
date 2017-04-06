@@ -100,8 +100,9 @@ public class OrderManager extends Actor{
 
 	/** Return true if some work has been done */
 	public boolean runOnce() throws IOException, ClassNotFoundException, InterruptedException{
-		return processRouterMessages()
-            || processTraderMessages();
+		boolean rm = processRouterMessages();
+		boolean tm = processTraderMessages();
+	    return rm || tm;
 	}
 
 
@@ -132,8 +133,6 @@ public class OrderManager extends Actor{
 	public void run(){
         // Print the summary from time to time
         ScheduledPrint sp = new ScheduledPrint(print_delta, this);
-
-        //spawnClients();
 
 		while(true){
 
@@ -174,7 +173,8 @@ public class OrderManager extends Actor{
 		for (int router_id = 0; router_id < routers.size(); router_id++) {
 			router = routers.get(router_id);
 
-			while (router.getInputStream().available() > 0) {
+			while (router.getInputStream().available() > 0)
+            {
 				Message m = readMessage(router);
 
 				debug(" calling " + m.op);
@@ -187,6 +187,7 @@ public class OrderManager extends Actor{
 					case ANSNewFill:
 						newFill((Message.NewFill) m);
 						break;
+
                     default:
                         error("unsupported operation");
                         break;
@@ -199,13 +200,15 @@ public class OrderManager extends Actor{
 
 	public boolean processTraderMessages() throws IOException, ClassNotFoundException{
         boolean work_was_done = false;
-	    for(Socket trader : traders){
-            if (trader.getInputStream().available() <= 0)
-                continue;
 
-            while(trader.getInputStream().available() > 0) {
+        for (int trader_id = 0; trader_id < traders.size(); trader_id++) {
+            Socket trader = traders.get(trader_id);
+            
+            if(trader.getInputStream().available() > 0)
+            {
 				Message m = readMessage(trader);
-                debug(" calling " + m.op);
+
+                info(" calling " + m.op);
 
                 switch (m.op) {
                     case ANSAcceptOrder:
@@ -222,11 +225,6 @@ public class OrderManager extends Actor{
 	    }
 		return work_was_done;
 	}
-
-    void sendMessageToClient(int client_id, Message m){
-        ClientThread client = client_threads.get(client_id);
-        client.addMessage(m);
-    }
 
     void sendMessageToClient(int client_id, String message){
         ClientThread client = client_threads.get(client_id);
@@ -256,7 +254,8 @@ public class OrderManager extends Actor{
 		o.OrdStatus = '0'; // New
 
         sendMessageToClient(o.clientid, "11=" + o.client_order_id + ";35=A;39=0");
-		price(m.order_id, o);
+        info("GEtting the price for the order");
+        price(m.order_id, o);
 	}
 
 	public void sliceOrder(Message.TraderSliceOrder m) throws IOException {
@@ -485,7 +484,7 @@ public class OrderManager extends Actor{
 		Socket con = channel.socket();
 		con.setSendBufferSize(socket_buffer);
 		con.setReceiveBufferSize(socket_buffer);
-		con.setKeepAlive(true);
+		//con.setKeepAlive(true);
 
 		try {
 			ObjectInputStream is = new ObjectInputStream(con.getInputStream());

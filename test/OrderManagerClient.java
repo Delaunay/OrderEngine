@@ -25,7 +25,7 @@ public class OrderManagerClient extends Actor{
         order_manager = new Socket();
         order_manager.setSendBufferSize(HelperObject.socket_buffer);
         order_manager.setReceiveBufferSize(HelperObject.socket_buffer);
-        order_manager.setKeepAlive(true);
+        //order_manager.setKeepAlive(true);
 
         order_manager.connect(address);
 

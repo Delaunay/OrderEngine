@@ -23,7 +23,7 @@ public class HelperObject {
         classLog.setLevel(logLevel);
     }
 
-    private Logger classLog;
+    protected Logger classLog;
 
     static public void sleep(long time){
         try {

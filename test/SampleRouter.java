@@ -1,6 +1,7 @@
 import OrderRouter.Router;
 import Ref.Instrument;
 import Ref.Ric;
+import Utility.Connection;
 import Utility.HelperObject;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
@@ -10,6 +11,7 @@ import javax.net.ServerSocketFactory;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 
 public class SampleRouter extends Thread implements Router {
@@ -19,19 +21,16 @@ public class SampleRouter extends Thread implements Router {
             new Instrument(new Ric("BT.L"))
     };
 
-    public boolean sleep = true;
-    private Socket omConn;
-    private int    port;
-
     private ObjectInputStream  is;
     private ObjectOutputStream os;
+    private Socket             omConn;
+    private InetSocketAddress  order_manager_address;
+    private Logger             log;
 
-    private Logger log;
 
-
-    public SampleRouter(String name, int port) {
+    public SampleRouter(String name, InetSocketAddress om_manager) {
         this.setName(name);
-        this.port = port;
+        order_manager_address = om_manager;
         initLog();
     }
 
@@ -41,18 +40,27 @@ public class SampleRouter extends Thread implements Router {
     }
 
 
-    public void connectToOrderManager() throws IOException {
-        omConn = ServerSocketFactory.getDefault().createServerSocket(port).accept();
+    public void connectToOrderManager(InetSocketAddress address) throws IOException{
+        //OM will connect to us
+        omConn = new Socket();
         omConn.setSendBufferSize(HelperObject.socket_buffer);
         omConn.setReceiveBufferSize(HelperObject.socket_buffer);
-        log.info("Connected to OM " + port);
+        omConn.setKeepAlive(true);
+
+        omConn.connect(address);
+
+        ObjectOutputStream os = new ObjectOutputStream(omConn.getOutputStream());
+        os.writeObject(Connection.ConnectionType.RouterConnection);
+        os.flush();
+
+        log.info("Connected to OM ");
     }
 
     @Override
     public void run() {
         try {
             if (omConn == null)
-                connectToOrderManager();
+                connectToOrderManager(order_manager_address);
 
             while (true) {
                 runOnce();

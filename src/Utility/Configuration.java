@@ -14,12 +14,11 @@ public class Configuration {
     void init(String config_name){
         // set default properties
         prop.setProperty("port", "2000");
-        prop.setProperty("port-client", "2000");
-        prop.setProperty("port-trader", "2100");
-        prop.setProperty("port-router", "2200");
+        prop.setProperty("port-order", "2000");
         prop.setProperty("num-client", "8");
         prop.setProperty("num-trader", "2");
         prop.setProperty("num-router", "2");
+        prop.setProperty("hostname", "localhost");
 
         try {
             FileInputStream config = new FileInputStream(config_name);
@@ -48,9 +47,11 @@ public class Configuration {
         return Integer.parseInt(port);
     }
 
-    public int getClientNumber(){   return getNum("client");}
-    public int getRouterNumber(){   return getNum("router");}
-    public int getTraderNumber(){   return getNum("trader");}
+    public String getHostname()      {  return prop.getProperty("hostname"); }
+    public int getOrderManagerPort() {  return getNum("port-order"); }
+    public int getClientNumber()     {  return getNum("client");}
+    public int getRouterNumber()     {  return getNum("router");}
+    public int getTraderNumber()     {  return getNum("trader");}
 
 
     public int getNum(String name){

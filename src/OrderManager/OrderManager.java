@@ -16,10 +16,12 @@ import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
+import Utility.Connection.ConnectionType;
 
 /**
  * 			Order Manager listens to
@@ -36,69 +38,46 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *			   -> AcceptOrder -> Client
  */
 public class OrderManager extends HelperObject{
-    private ConcurrentHashMap<Integer, PendingOrder> orders = new ConcurrentHashMap<>();
-    private ConcurrentLinkedQueue<PendingNewOrder>   pending_new_orders = new ConcurrentLinkedQueue<>();
+	// Orders being processed
+    private ConcurrentHashMap<Integer, PendingOrder>
+			orders = new ConcurrentHashMap<>();
+
+    // New order being received
+    private ConcurrentLinkedQueue<PendingNewOrder>
+			pending_new_orders = new ConcurrentLinkedQueue<>();
 
     private static LiveMarketData 	liveMarketData;
 	private int 					id          = 0;
 	private int                     next_trader = 0;
-	private Socket[]	 		    traders;
-	private Socket[] 				orderRouters;
-	private Socket[] 		     	clients;
-    private ClientThread[]          clientWorkers;
+	private ArrayList<Socket> 		traders = new ArrayList<>(100);
+	private ArrayList<Socket>		routers = new ArrayList<>(100);
+    private ArrayList<ClientThread> client_threads = new ArrayList<>(100);
+	private ServerSocketChannel 	serverSocket;
+	private Statistics				stats = new Statistics();
 
-	long totalMemoryUsage    = 0;
-	long memoryCount         = 0;
-	long startingTime        = System.currentTimeMillis();
-	long lastTime            = System.currentTimeMillis();
-	long averageTimePerOrder = 0;
-	long lastOrderSize       = 0;
-	long numOrderPerSecond   = 0;
-	double averageCPU        = 0;
+    public OrderManager(int port, LiveMarketData liveData)
+	{
+		try {
+			serverSocket = ServerSocketChannel.open();
+			serverSocket.bind(new InetSocketAddress(port));
+			serverSocket.configureBlocking(false);
+		} catch (IOException e){
+			error("Could not bind socket to port");
+			System.exit(1);
+		}
 
-    public OrderManager(InetSocketAddress[] routers,
-                 InetSocketAddress[] clients,
-                 InetSocketAddress[] traders,
-                 LiveMarketData liveData)
-    {
         initLog(this.getClass().getName());
         liveMarketData = liveData ;
-        try {
-            connectToTraders(traders);
-            connectToRouters(routers);
-            connectToClients(clients);
-        } catch (InterruptedException e){
-            debug("Interrupted during connection attempt");
-        }
+
+        // We probably have a fixed number of markets
+        // connectToRouters(routers);
     }
 
-    ServerSocketChannel serverSocket;
 
-    /*
-    public void acceptConnection() throws IOException{
-        serverSocket.configureBlocking(false);
-        SocketChannel channel = serverSocket.accept();
-
-        if (channel == null)
-            return;
-
-        Socket con = channel.socket();
-
-        if (con.getInputStream().available() > 0){
-            ObjectInputStream is = new ObjectInputStream(con.getInputStream());
-                ConnectionType type = (ConnectionType) is.readObject();
-                switch(type){
-                    case TraderConnection:  addTrader(con); return;
-                    case ClientConnection:  addClient(con); return;
-                    case RouterConnection:  addRouter(con); return;
-                }
-        }
-    }*/
-
-	public synchronized Socket getTrader(){
-	    Socket t = traders[next_trader];
+	public Socket getTrader(){
+	    Socket t = traders.get(next_trader);
 	    next_trader += 1;
-	    next_trader %= traders.length;
+	    next_trader %= traders.size();
 	    return t;
     }
 
@@ -107,41 +86,6 @@ public class OrderManager extends HelperObject{
 		return processRouterMessages()
             || processTraderMessages();
 	}
-
-	void summary(){
-		OperatingSystemMXBean cpuMeasure = (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-        System.gc();
-        Runtime rt = Runtime.getRuntime();
-        long memory = (rt.totalMemory() - rt.freeMemory()) / 1024 ;
-
-        totalMemoryUsage += memory;
-        memoryCount += 1;
-
-        if(orders.size() > 0){
-            long now = System.currentTimeMillis();
-            long diffOrders = orders.size() - lastOrderSize;
-
-            lastOrderSize = orders.size();
-            if (now > startingTime){
-                numOrderPerSecond = (diffOrders  * 1000 /(now - lastTime));
-                averageTimePerOrder = orders.size() * 1000 / (now - startingTime);
-                lastTime = now;
-            }
-        }
-
-        long averageMemoryUsage = totalMemoryUsage / memoryCount;
-        double cpu = cpuMeasure.getProcessCpuLoad();
-        averageCPU += cpu;
-
-        info("       Order: " + orders.size() + " \t" + "(AVG: " + averageTimePerOrder + ")");
-        info("      Memory: " + memory + " KB (AVG: " + averageMemoryUsage + " KB)");
-        info("    CPU load: " + trunc(cpu * 100) + " \t(AVG: " + trunc(averageCPU * 100 / memoryCount) + "%)");
-
-		if(memory > 1048576 ){
-			System.exit(0);
-		}
-    }
-
 
 
     void addNewOrder(PendingNewOrder nos){
@@ -172,14 +116,15 @@ public class OrderManager extends HelperObject{
         // Print the summary from time to time
         ScheduledPrint sp = new ScheduledPrint(1000, this);
 
-        spawnClients();
+        //spawnClients();
 
 		while(true){
-            /*
+
 		    try {
                 acceptConnection();
             } catch (IOException e){
-            }*/
+		    	error("Failed to connect to a client");
+            }
 
             if (pending_new_orders.size() > 0)
                 runPendingNewOrders();
@@ -204,32 +149,15 @@ public class OrderManager extends HelperObject{
 
 	// Read Incoming Messages
 	// ------------------------------------------------------------------------
-	public void spawnClients() {
-        clientWorkers = new ClientThread[clients.length];
-
-	    for (int clientId = 0; clientId < this.clients.length; clientId++) {
-			Socket client = this.clients[clientId];
-
-			clientWorkers[clientId] = new ClientThread(clientId, client, this);
-			Thread t = new Thread(clientWorkers[clientId]);
-            t.setName("ClientThread " + clientId);
-            t.start();
-
-			debug("client ID : " + clientId);
-		}
-		clients = null; // clients socket should never been access by Order Manager ever again
-	}
 
 	public boolean processRouterMessages() throws IOException, ClassNotFoundException{
-		int routerId;
 		Socket router;
 		boolean work_was_done = false;
 
-		for (routerId = 0; routerId < this.orderRouters.length; routerId++) {
-			router = this.orderRouters[routerId];
+		for (int router_id = 0; router_id < routers.size(); router_id++) {
+			router = routers.get(router_id);
 
 			while (router.getInputStream().available() > 0) {
-
 				ObjectInputStream is = new ObjectInputStream(router.getInputStream());
 				Router.MessageKind method = (Router.MessageKind) is.readObject();
 
@@ -241,7 +169,7 @@ public class OrderManager extends HelperObject{
 						int SliceId = is.readInt();
 						//debug("====> order_id " + OrderId);
 						Order slice = orders.get(OrderId).order.slices.get(SliceId);
-						slice.bestPrices[routerId] = is.readDouble();
+						slice.bestPrices[router_id] = is.readDouble();
 						slice.bestPriceCount += 1;
 						if (slice.bestPriceCount == slice.bestPrices.length)
 							routeOrder(SliceId, slice);
@@ -288,7 +216,7 @@ public class OrderManager extends HelperObject{
 			os.writeObject(message);
 			os.flush(); //*/
 
-        ClientThread client = clientWorkers[client_id];
+        ClientThread client = client_threads.get(client_id);
         client.addMessage(message);
     }
 
@@ -394,7 +322,7 @@ public class OrderManager extends HelperObject{
 	 * 	@param order	Order object
 	 * 	*/
 	private void askBestPrice(int id, int sliceId, int size, Order order) throws IOException {
-		for (Socket r : orderRouters) {
+		for (Socket r : routers) {
 
 			ObjectOutputStream os = new ObjectOutputStream(r.getOutputStream());
 				os.writeObject(Router.MessageKind.REQPriceAtSize);
@@ -406,7 +334,7 @@ public class OrderManager extends HelperObject{
 		}
 
 		// need to wait for these prices to come back before routing
-		order.bestPrices = new double[orderRouters.length];
+		order.bestPrices = new double[routers.size()];
 		order.bestPriceCount = 0;
 	}
 
@@ -415,7 +343,7 @@ public class OrderManager extends HelperObject{
 		// if o.size < 0 => We are selling
 		int index = o.size > 0 ? getBestBuyPrice(o) : getBestSellPrice(o);
 
-		ObjectOutputStream os = new ObjectOutputStream(orderRouters[index].getOutputStream());
+		ObjectOutputStream os = new ObjectOutputStream(routers.get(index).getOutputStream());
 			os.writeObject(Router.MessageKind.REQRouteOrder);
 			os.writeInt(o.id);
 			os.writeInt(sliceId);
@@ -489,6 +417,64 @@ public class OrderManager extends HelperObject{
 
 	// Connection
     // ------------------------------------------------------------------------
+	public void acceptConnection() throws IOException{
+		SocketChannel channel = serverSocket.accept();
+
+		if (channel == null)
+			return;
+
+		Socket con = channel.socket();
+		con.setSendBufferSize(socket_buffer);
+		con.setReceiveBufferSize(socket_buffer);
+		con.setKeepAlive(true);
+
+		try {
+			ObjectInputStream is = new ObjectInputStream(con.getInputStream());
+			ConnectionType type = (ConnectionType) is.readObject();
+			switch (type) {
+				case TraderConnection:
+					addTraderConnection(con);
+					return;
+				case ClientConnection:
+					addClientConnection(con);
+					return;
+				case RouterConnection:
+					addRouterConnection(con);
+					return;
+			}
+		} catch (ClassNotFoundException e){
+			error("Connection Type unknown");
+		}
+
+	}
+
+	void addTraderConnection(Socket trader){
+		int size = traders.size();
+		info("Trader (" + size + ") has connected");
+		traders.add(trader);
+	}
+
+	void addRouterConnection(Socket router){
+		int size = routers.size();
+		info("Router (" + size + ") has connected");
+		routers.add(router);
+	}
+
+	void addClientConnection(Socket client){
+		int size = client_threads.size();
+		info("Client (" + size + ") has connected");
+		spawnClient(size, client);
+	}
+
+	public void spawnClient(int client_id, Socket client) {
+		ClientThread ct = new ClientThread(client_id, client, this);
+		client_threads.add(ct);
+
+		Thread t = new Thread(ct);
+		t.setName("ClientThread " + client_id);
+		t.start();
+	}
+
 	private Socket connect(InetSocketAddress location) throws InterruptedException {
 		int tryCounter = 0;
 		while (tryCounter < 600) {
@@ -507,31 +493,62 @@ public class OrderManager extends HelperObject{
 		return null;
 	}
 
-
-	public void connectToTraders(InetSocketAddress[] traders_) throws InterruptedException{
-        int i = 0;
-        traders = new Socket[traders_.length];
-        for (InetSocketAddress add : traders_) {
-            traders[i] = connect(add);
-            i += 1;
-            info("Connected to Trader: " + i);
-        }
-	}
-
 	public void connectToRouters(InetSocketAddress[] orderRouters) throws InterruptedException{
-		int i = 0;
-		this.orderRouters = new Socket[orderRouters.length];
 		for (InetSocketAddress location : orderRouters) {
-			this.orderRouters[i] = connect(location);
-			i += 1;
+			routers.add(connect(location));
 		}
 	}
-	public void connectToClients(InetSocketAddress[] clients) throws InterruptedException{
-		this.clients = new Socket[clients.length];
-		int i = 0;
-		for (InetSocketAddress location : clients) {
-			this.clients[i] = connect(location);
-			i += 1;
+
+	//		Runtime statistics about OrderManager
+	// ------------------------------------------------------------------------
+	static class Statistics extends HelperObject{
+		long startingTime        = System.currentTimeMillis();
+		long lastTime            = System.currentTimeMillis();
+		long totalMemoryUsage    = 0;
+		long memoryCount         = 0;
+		long averageTimePerOrder = 0;
+		long lastOrderSize       = 0;
+		long numOrderPerSecond   = 0;
+		double averageCPU        = 0;
+
+		Statistics(){
+			initLog(this.getClass().getName());
+		}
+
+		void summary(int order_size){
+			OperatingSystemMXBean cpuMeasure =
+					(com.sun.management.OperatingSystemMXBean)
+							ManagementFactory.getOperatingSystemMXBean();
+			System.gc();
+			Runtime rt = Runtime.getRuntime();
+			long memory = (rt.totalMemory() - rt.freeMemory()) / 1024 ;
+
+			totalMemoryUsage += memory;
+			memoryCount += 1;
+
+			if(order_size > 0){
+				long now = System.currentTimeMillis();
+				long diffOrders = order_size - lastOrderSize;
+
+				lastOrderSize = order_size;
+				if (now > startingTime){
+					numOrderPerSecond = (diffOrders  * 1000 /(now - lastTime));
+					averageTimePerOrder = order_size * 1000 / (now - startingTime);
+					lastTime = now;
+				}
+			}
+
+			long averageMemoryUsage = totalMemoryUsage / memoryCount;
+			double cpu = cpuMeasure.getProcessCpuLoad();
+			averageCPU += cpu;
+
+			info("       Order: " + order_size + " \t" + "(AVG: " + averageTimePerOrder + ")");
+			info("      Memory: " + memory + " KB (AVG: " + averageMemoryUsage + " KB)");
+			info("    CPU load: " + trunc(cpu * 100) + " \t(AVG: " + trunc(averageCPU * 100 / memoryCount) + "%)");
+
+			if(memory > 1048576 ){
+				System.exit(0);
+			}
 		}
 	}
 
@@ -545,7 +562,7 @@ public class OrderManager extends HelperObject{
 
         @Override
         public void scheduledJob(){
-            manager.summary();
+            manager.stats.summary(manager.orders.size());
         }
     }
 }

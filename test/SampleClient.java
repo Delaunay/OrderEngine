@@ -3,6 +3,7 @@ import OrderClient.NewOrderSingle;
 import OrderManager.Order;
 import Ref.Instrument;
 import Ref.Ric;
+import Utility.Connection;
 import Utility.HelperObject;
 import Utility.Util;
 import org.apache.log4j.Level;
@@ -12,10 +13,13 @@ import org.apache.log4j.Logger;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Random;
+import Utility.Connection.ConnectionType;
 
 public class SampleClient extends Thread implements Client {
     private static final Random RANDOM_NUM_GENERATOR = new Random();
@@ -30,12 +34,13 @@ public class SampleClient extends Thread implements Client {
     // message id number used as a `primary key` thats why it is static
     // Although this needs to change, the id should be given by the OrderManager not the client
     private static int 		     id = 0;
-    private Socket 				 omConn; // connection to order manager
     private ObjectInputStream    is;
     private Logger               log;
-    private int                  delta = 1000;
+    private int                  print_delta = 1000;
     private int                  initial_orders = 0;
-    private int                  port;
+
+    private Socket 				 omConn;
+    private InetSocketAddress    order_manager_address;
 
     class FIXMessage{
         int     OrderId	=	-1;
@@ -50,39 +55,46 @@ public class SampleClient extends Thread implements Client {
         initLog();
     }
 
-    public SampleClient(int port) throws IOException{
-        initLog();
-        this.port=port;
-    }
-
-    public SampleClient(String name, int port, int milli, int initial_orders_) throws IOException{
+    public SampleClient(String name,
+                        int print_delta_,
+                        int initial_orders_,
+                        InetSocketAddress om_address)
+    {
         this.setName(name);
         initLog();
-        delta = milli;
+        print_delta = print_delta_;
         initial_orders = initial_orders_;
-        this.port = port;
-
+        order_manager_address = om_address;
     }
-    public void initLog(){
 
+    public void initLog(){
         log = LogManager.getLogger(this.getClass().getName());
         log.setLevel(Level.INFO);
     }
 
-
-    public void connectToOrderManager(int port) throws IOException{
+    public void connectToOrderManager(InetSocketAddress address) throws IOException{
         //OM will connect to us
-        omConn = new ServerSocket(port).accept();
+        omConn = new Socket();
         omConn.setSendBufferSize(HelperObject.socket_buffer);
         omConn.setReceiveBufferSize(HelperObject.socket_buffer);
-        log.info("Connected to OM " + port);
+        omConn.setKeepAlive(true);
+
+        omConn.connect(address);
+
+        // send handshake
+        ObjectOutputStream os = new ObjectOutputStream(omConn.getOutputStream());
+            os.writeObject(ConnectionType.ClientConnection);
+            os.flush();
+
+        log.info("Connected to OM ");
     }
 
     @Override
     public void run(){
 
         try {
-            connectToOrderManager(port);
+            connectToOrderManager(order_manager_address);
+
             for (int i = 0; i < initial_orders; ++i) {
                 sendOrder();
             }
@@ -231,10 +243,10 @@ public class SampleClient extends Thread implements Client {
     @Override
     public void messageHandler(){
         // Print the summary from time to time
-        ScheduledPrint sp = new ScheduledPrint(delta, this);
+        ScheduledPrint sp = new ScheduledPrint(print_delta, this);
 
         // Create a new order every X millisecond
-        ScheduledOrder so = new ScheduledOrder(delta, this);
+        ScheduledOrder so = new ScheduledOrder(print_delta, this);
 
         try {
             while (true){

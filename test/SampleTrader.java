@@ -1,5 +1,6 @@
 import OrderManager.Order;
 import TradeScreen.TradeScreen;
+import Utility.Connection;
 import Utility.HelperObject;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -9,24 +10,24 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.HashMap;
 
 public class SampleTrader extends Thread implements TradeScreen{
 	private HashMap<Integer,Order> orders = new HashMap<>();
 
-    private InputStream          s;
     private ObjectInputStream  	is;
     private ObjectOutputStream 	os;
 
-	private Socket omConn;
-	private int    port;
-    private Logger log;
+    private InetSocketAddress   order_manager_address;
+	private Socket              omConn;
+    private Logger              log;
 
 
-    public SampleTrader(String name, int port){
+    public SampleTrader(String name, InetSocketAddress om_address){
 		this.setName(name);
-		this.port = port;
+		order_manager_address = om_address;
         initLog();
     }
 
@@ -42,8 +43,8 @@ public class SampleTrader extends Thread implements TradeScreen{
 
 	public
     boolean readMessage() throws IOException, ClassNotFoundException{
-        while(s.available() > 0){
-            is = new ObjectInputStream(s);
+        while(omConn.getInputStream().available() > 0){
+            is = new ObjectInputStream(omConn.getInputStream());
 
             TradeScreen.MessageKind  method  = (TradeScreen.MessageKind) is.readObject();
             int   id                         = is.readInt();
@@ -61,19 +62,27 @@ public class SampleTrader extends Thread implements TradeScreen{
         return false;
     }
 
-    public void connectToOrderManager() throws IOException {
-        omConn = ServerSocketFactory.getDefault().createServerSocket(port).accept();
+    public void connectToOrderManager(InetSocketAddress address) throws IOException{
+        //OM will connect to us
+        omConn = new Socket();
         omConn.setSendBufferSize(HelperObject.socket_buffer);
         omConn.setReceiveBufferSize(HelperObject.socket_buffer);
-        log.info("Connected to OM " + port);
-        s = omConn.getInputStream();
+        omConn.setKeepAlive(true);
+
+        omConn.connect(address);
+
+        ObjectOutputStream os = new ObjectOutputStream(omConn.getOutputStream());
+            os.writeObject(Connection.ConnectionType.TraderConnection);
+            os.flush();
+
+        log.info("Connected to OM ");
     }
 
 	public void run(){
 		//OM will connect to us
 		try {
 			if (omConn == null)
-                connectToOrderManager();
+                connectToOrderManager(order_manager_address);
 
 			while(true){
                 readMessage();

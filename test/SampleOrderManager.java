@@ -6,11 +6,8 @@ import java.net.InetSocketAddress;
 
 public class SampleOrderManager extends OrderManager implements Runnable{
 
-    public SampleOrderManager(InetSocketAddress[] routers,
-                       InetSocketAddress[] clients,
-                       InetSocketAddress[] traders,
-                       LiveMarketData liveMarketData){
-        super(routers, clients, traders, liveMarketData);
+    public SampleOrderManager(int port, LiveMarketData liveMarketData){
+        super(port, liveMarketData);
     }
     @Override
     public void run() {

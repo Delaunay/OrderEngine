@@ -13,7 +13,7 @@ import static org.junit.Assert.assertEquals;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class OMTest {
-
+/*/
     public OMTest(){
         try {
             init();
@@ -143,8 +143,8 @@ public class OMTest {
         return work;
     }
 
-    /* Why do we check for non blocking operation ?
-     * We want our test to end and not run forever      */
+    //* Why do we check for non blocking operation ?
+    //* We want our test to end and not run forever
     @Test
     public void nonBlockingNothing() throws IOException, ClassNotFoundException, InterruptedException {
         // We check if all our actors are indeed non blocking
@@ -188,5 +188,5 @@ public class OMTest {
     final static int trader_num  = 3;
     final static String address  = "localhost";
 
-    private static boolean setUpIsDone = false;
+    private static boolean setUpIsDone = false;//*/
 }

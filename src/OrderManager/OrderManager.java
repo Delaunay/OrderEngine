@@ -295,7 +295,7 @@ public class OrderManager extends Actor{
 			slice.add(cslice);      // we need the slices by instrument for cross
 
 			po.slices.add(cslice);  // Each Order keep track of their slices
-            askBestPrice(m.order_id, po.slice_num, po.slices.get(po.slice_num));
+            // askBestPrice(m.order_id, po.slice_num, po.slices.get(po.slice_num));
 
 			order_size -= slice_size;
 			po.slice_num += 1;
@@ -303,12 +303,11 @@ public class OrderManager extends Actor{
 
 		debug("Order size: " + po.size_remain + " Slices: " + po.slice_num + " SliceSize:" + m.slice_size);
 
-
 		internalCross(po.order.instrument);
 
         if (po.size_remain > 0) {
             int slice_id = po.slices.size() - po.slice_num;
-            Slice to_order = po.slices.get(po.slice_num);
+            Slice to_order = po.slices.get(slice_id);
             askBestPrice(m.order_id, slice_id, to_order);
         }
 	}
@@ -318,13 +317,11 @@ public class OrderManager extends Actor{
 
         for(int i = 0; i < slices.size(); ++i){
             Slice a = slices.get(i);
-            int asize = Math.abs(a.size);
             for(int k = i; k < slices.size(); ++k){
                 Slice b = slices.get(k);
-                int bsize = Math.abs(b.size);
 
                 // same sign move one
-                if (a.size * b.size > 0)
+                if (a.buy == b.buy)
                     continue;
 
                 // Consume both slices Does arrayList gets invalidated ?
@@ -332,7 +329,7 @@ public class OrderManager extends Actor{
                     slices.remove(i);
                     slices.remove(k);
 
-                    if (a.size + b.size < 0){
+                    if (a.size < b.size){
                         b.parent.size_remain -= b.size;
                         a.parent.size_remain -= b.size;
                         b.parent.slice_num   -= 1;
@@ -422,7 +419,7 @@ public class OrderManager extends Actor{
         // We should execute next slice
         Slice next = getNextSlice(po, m.slice_id);
 		if (next != null){
-
+            askBestPrice(m.order_id, m.slice_id + 1, next);
         }
 
 		sendMessage(getTrader(), new Message.TraderFill(id, po.order));

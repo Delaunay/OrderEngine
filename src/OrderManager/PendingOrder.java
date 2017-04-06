@@ -9,6 +9,7 @@ public class PendingOrder {
     int              slice_num;
     int              size_remain;
     double           cost;
+    public boolean   buy;
     ArrayList<Slice> slices = new ArrayList<Slice>();
     ArrayList<Fill>  fills  = new ArrayList<Fill>();
 
@@ -16,6 +17,7 @@ public class PendingOrder {
         slice_num = 0;
         size_remain = o.size;
         order = o;
+        buy = o.buy;
     }
 }
 
@@ -25,11 +27,13 @@ class Slice implements Serializable{
     public double       price;
     public double[]     best_prices;
     public int          best_price_count;
+    public boolean      buy;
 
     public Slice(PendingOrder p, int s, double px){
         parent = p;
         price = px;
         size = s;
+        buy = p.buy;
     }
 }
 

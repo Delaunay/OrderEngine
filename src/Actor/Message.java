@@ -97,17 +97,17 @@ public class Message implements Serializable{
     }
 
     static public class NewOrderSingle extends Message{
-        public int        order_id;
+        public int        client_order_id;
         public Instrument instrument;
         public int        size;
         public float      price;
 
-        public NewOrderSingle(int order, Instrument asset, int size_, float price_){
-            op          = MessageKind.ANSNewOrder;
-            order_id    = order;
-            instrument  = asset;
-            size        = size_;
-            price       = price_;
+        public NewOrderSingle(int client_order_id_, Instrument asset, int size_, float price_){
+            op              = MessageKind.ANSNewOrder;
+            client_order_id = client_order_id_;
+            instrument      = asset;
+            size            = size_;
+            price           = price_;
         }
     }
 

@@ -1,24 +1,20 @@
 package OrderManager;
 
-import OrderClient.Client;
 import OrderClient.NewOrderSingle;
-import Utility.HelperObject;
+import Actor.Actor;
+import Actor.Message;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-/**
- * Created by user on 4/5/2017.
- */
-class ClientThread extends HelperObject implements Runnable {
+
+class ClientThread extends Actor implements Runnable {
 	private int client_id;
 	private Socket client;
 	private OrderManager order_manager;
 	private ConcurrentLinkedQueue<String> pending_messages;
-
 
 	ClientThread(int clientId, Socket client, OrderManager oM) {
 		this.client_id = clientId;
@@ -54,12 +50,18 @@ class ClientThread extends HelperObject implements Runnable {
 	public static class PendingNewOrder{
 		int client_id;
 		int client_order_id;
-		NewOrderSingle new_order;
+		Message.NewOrderSingle new_order;
 
+		/*
 		PendingNewOrder(int id, int oid, NewOrderSingle nos){
 			client_id = id;
 			client_order_id = oid;
 			new_order = nos;
+		}*/
+
+		PendingNewOrder(int id, Message.NewOrderSingle a){
+			client_id = id;
+			new_order = a;
 		}
 	}
 
@@ -70,14 +72,17 @@ class ClientThread extends HelperObject implements Runnable {
 				sendMessages();
 
 			try {
-				ObjectInputStream is = new ObjectInputStream(client.getInputStream());
-				Client.MessageKind method = (Client.MessageKind) is.readObject();
-				//debug(" calling " + method);
 
-				switch (method) {
+				Message m = readMessage(client);
+				/*
+				ObjectInputStream is = new ObjectInputStream(client.getInputStream());
+				Client.MessageKind method = (Client.MessageKind) is.readObject(); */
+				debug(" calling " + m.op);
+
+				switch (m.op) {
 					case ANSNewOrder:
 						order_manager.addNewOrder(
-								new PendingNewOrder(client_id, is.readInt(), (NewOrderSingle) is.readObject()));
+								new PendingNewOrder(client_id, (Message.NewOrderSingle) m));
 						break;
 					case ANSCancel:
 						break;

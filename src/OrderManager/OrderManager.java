@@ -222,7 +222,6 @@ public class OrderManager extends Actor{
 	// ----------------------------------------------------------------
 
 
-
 	protected void newOrder(int clientId, int clientOrderId, NewOrderSingle nos) throws IOException {
 
 		orders.put(id, new PendingOrder(new Order(clientId, id, nos.instrument, nos.size, clientOrderId)));
@@ -235,15 +234,6 @@ public class OrderManager extends Actor{
 		id++;
 	}
 
-	private void sendOrderToTrader(int id, Order o, Message method) throws IOException {
-    	/*
-		ObjectOutputStream ost = new ObjectOutputStream(getTrader().getOutputStream());
-			ost.writeObject(method);
-			ost.writeInt(id);
-			ost.writeObject(o);
-			ost.flush();*/
-    	sendMessage(getTrader(), method);
-	}
 
 	public void acceptOrder(Message.AcceptOrder m) throws IOException {
 		Order o = orders.get(m.order_id).order;

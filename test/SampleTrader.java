@@ -1,40 +1,23 @@
 import OrderManager.Order;
 import TradeScreen.TradeScreen;
-import Utility.Connection;
+import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
 
-import javax.net.ServerSocketFactory;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.util.HashMap;
 
-public class SampleTrader extends Thread implements TradeScreen{
+public class SampleTrader extends OrderManagerClient implements TradeScreen, Runnable{
 	private HashMap<Integer,Order> orders = new HashMap<>();
 
     private ObjectInputStream  	is;
     private ObjectOutputStream 	os;
 
-    private InetSocketAddress   order_manager_address;
-	private Socket              omConn;
-    private Logger              log;
-
-
-    public SampleTrader(String name, InetSocketAddress om_address){
-		this.setName(name);
-		order_manager_address = om_address;
-        initLog();
-    }
-
-    public void initLog(){
-        //BasicConfigurator.configure();
-        log = LogManager.getLogger(this.getClass().getName());
-        log.setLevel(HelperObject.logLevel);
+    public SampleTrader(InetSocketAddress om_address){
+		super(om_address);
+        initLog(this.getClass().getName());
     }
 
     public  boolean runOnce() throws IOException, ClassNotFoundException {
@@ -43,14 +26,14 @@ public class SampleTrader extends Thread implements TradeScreen{
 
 	public
     boolean readMessage() throws IOException, ClassNotFoundException{
-        while(omConn.getInputStream().available() > 0){
-            is = new ObjectInputStream(omConn.getInputStream());
+        while(order_manager.getInputStream().available() > 0){
+            is = new ObjectInputStream(order_manager.getInputStream());
 
             TradeScreen.MessageKind  method  = (TradeScreen.MessageKind) is.readObject();
             int   id                         = is.readInt();
             Order order                      = (Order) is.readObject();
 
-            log.debug(method.toString());
+            debug("called " + method);
 
             switch(method){
                 case REQNewOrder: newOrder(id, order); return true;
@@ -63,25 +46,13 @@ public class SampleTrader extends Thread implements TradeScreen{
     }
 
     public void connectToOrderManager(InetSocketAddress address) throws IOException{
-        //OM will connect to us
-        omConn = new Socket();
-        omConn.setSendBufferSize(HelperObject.socket_buffer);
-        omConn.setReceiveBufferSize(HelperObject.socket_buffer);
-        omConn.setKeepAlive(true);
-
-        omConn.connect(address);
-
-        ObjectOutputStream os = new ObjectOutputStream(omConn.getOutputStream());
-            os.writeObject(Connection.ConnectionType.TraderConnection);
-            os.flush();
-
-        log.info("Connected to OM ");
+        connectToOrderManager(ConnectionType.TraderConnection, address);
     }
 
 	public void run(){
 		//OM will connect to us
 		try {
-			if (omConn == null)
+			if (order_manager == null)
                 connectToOrderManager(order_manager_address);
 
 			while(true){
@@ -92,7 +63,7 @@ public class SampleTrader extends Thread implements TradeScreen{
         } catch (IOException e) {
             e.printStackTrace();
         } catch (ClassNotFoundException e) {
-            log.error("Object Error");
+            error("Object Error");
         }
 	}
 
@@ -101,12 +72,12 @@ public class SampleTrader extends Thread implements TradeScreen{
 
     // TODO
     void cross(int id, Order o){
-        log.debug("CROSS");
+        debug("CROSS");
     }
 
     // TODO
     void fill(int id, Order o){
-        log.debug("FILL");
+        debug("FILL");
     }
 
 	@Override
@@ -118,7 +89,7 @@ public class SampleTrader extends Thread implements TradeScreen{
 
 	@Override
 	public void acceptOrder(int id) throws IOException {
-        os = new ObjectOutputStream(omConn.getOutputStream());
+        os = new ObjectOutputStream(order_manager.getOutputStream());
             os.writeObject(MessageKind.ANSAcceptOrder);
             os.writeInt(id);
             os.flush();
@@ -126,7 +97,7 @@ public class SampleTrader extends Thread implements TradeScreen{
 
 	@Override
 	public void sliceOrder(int id, int sliceSize) throws IOException {
-		os = new ObjectOutputStream(omConn.getOutputStream());
+		os = new ObjectOutputStream(order_manager.getOutputStream());
             os.writeObject(MessageKind.ANSSliceOrder);
             os.writeInt(id);
             os.writeInt(sliceSize);

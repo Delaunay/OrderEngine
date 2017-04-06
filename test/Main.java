@@ -1,12 +1,9 @@
 import LiveMarketData.LiveMarketData;
-import OrderManager.OrderManager;
 import Utility.Configuration;
 import org.apache.log4j.BasicConfigurator;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class Main {
     public static void main(String[] args) throws IOException {
@@ -35,18 +32,21 @@ public class Main {
 
 
         for(int i = 0; i < num_router; ++i) {
-            SampleRouter rt = new SampleRouter("Router " + i, om_address);
-            rt.start();
+            Thread t = new Thread(new SampleRouter(om_address));
+                t.setName("Router " + i);
+                t.start();
         }
 
         for(int i = 0; i < num_trader; ++i) {
-            SampleTrader rt = new SampleTrader("Trader " + i, om_address);
-            rt.start();
+            Thread t = new Thread(new SampleTrader(om_address));
+                t.setName("Trader " + i);
+                t.start();
         }
 
         for(int i = 0; i < num_client; ++i) {
-            SampleClient sc = new SampleClient("Client " + i, print_delta, initial_orders, om_address);
-            sc.start();
+            Thread t = new Thread( new SampleClient(print_delta, initial_orders, om_address));
+                t.setName("Client " + i);
+                t.start();
         }
     }
 }

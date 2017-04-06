@@ -1,9 +1,4 @@
-import Utility.Configuration;
-import Utility.Util;
-
 import java.net.InetSocketAddress;
-import java.util.HashMap;
-import java.util.HashSet;
 
 public class StandAloneTrader {
 
@@ -16,7 +11,7 @@ public class StandAloneTrader {
      */
 
     public static void main(String[] args) {
-        SampleTrader trader = new SampleTrader("Trader",
+        SampleTrader trader = new SampleTrader(
                 new InetSocketAddress("localhost", 2000));
 
         trader.run();

@@ -1,9 +1,4 @@
-import Utility.Configuration;
-import Utility.Util;
-
 import java.net.InetSocketAddress;
-import java.util.HashMap;
-import java.util.HashSet;
 
 /**
  * Created by user on 4/3/2017.
@@ -19,7 +14,7 @@ public class StandAloneRouter {
      */
 
     public static void main(String[] args) {
-        SampleRouter router =  new SampleRouter("Router",
+        SampleRouter router =  new SampleRouter(
                 new InetSocketAddress("localhost", 2000));
         router.run();
     }

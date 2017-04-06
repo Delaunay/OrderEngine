@@ -1,10 +1,4 @@
-import Utility.Configuration;
-import Utility.Util;
-
-import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.HashMap;
-import java.util.HashSet;
 
 public class StandAloneClient {
 
@@ -18,9 +12,7 @@ public class StandAloneClient {
     public static void main(String[] args){
 
         SampleClient client = new SampleClient(
-                "Client",
-                10,
-                10,
+                10,10,
                 new InetSocketAddress("localhost", 200));
 
         client.run();

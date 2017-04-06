@@ -3,25 +3,18 @@ import OrderClient.NewOrderSingle;
 import OrderManager.Order;
 import Ref.Instrument;
 import Ref.Ric;
-import Utility.Connection;
+import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
 import Utility.Util;
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.util.HashMap;
 import java.util.Random;
-import Utility.Connection.ConnectionType;
 
-public class SampleClient extends Thread implements Client {
+public class SampleClient extends OrderManagerClient implements Client, Runnable {
     private static final Random RANDOM_NUM_GENERATOR = new Random();
     private static final Instrument[] INSTRUMENTS = {
             new Instrument(new Ric("VOD.L")),
@@ -35,12 +28,8 @@ public class SampleClient extends Thread implements Client {
     // Although this needs to change, the id should be given by the OrderManager not the client
     private static int 		     id = 0;
     private ObjectInputStream    is;
-    private Logger               log;
     private int                  print_delta = 1000;
     private int                  initial_orders = 0;
-
-    private Socket 				 omConn;
-    private InetSocketAddress    order_manager_address;
 
     class FIXMessage{
         int     OrderId	=	-1;
@@ -50,43 +39,19 @@ public class SampleClient extends Thread implements Client {
         double  price;
     }
 
-
-    public SampleClient(){
-        initLog();
-    }
-
-    public SampleClient(String name,
-                        int print_delta_,
+    public SampleClient(int print_delta_,
                         int initial_orders_,
                         InetSocketAddress om_address)
     {
-        this.setName(name);
-        initLog();
+        super(om_address);
+        initLog(this.getClass().getName());
         print_delta = print_delta_;
         initial_orders = initial_orders_;
-        order_manager_address = om_address;
+
     }
-
-    public void initLog(){
-        log = LogManager.getLogger(this.getClass().getName());
-        log.setLevel(Level.INFO);
-    }
-
-    public void connectToOrderManager(InetSocketAddress address) throws IOException{
-        //OM will connect to us
-        omConn = new Socket();
-        omConn.setSendBufferSize(HelperObject.socket_buffer);
-        omConn.setReceiveBufferSize(HelperObject.socket_buffer);
-        omConn.setKeepAlive(true);
-
-        omConn.connect(address);
-
-        // send handshake
-        ObjectOutputStream os = new ObjectOutputStream(omConn.getOutputStream());
-            os.writeObject(ConnectionType.ClientConnection);
-            os.flush();
-
-        log.info("Connected to OM ");
+    
+    void connectToOrderManager(InetSocketAddress address) throws IOException{
+        connectToOrderManager(ConnectionType.ClientConnection, address);
     }
 
     @Override
@@ -117,12 +82,12 @@ public class SampleClient extends Thread implements Client {
 
     @Override
     public int sendOrder(NewOrderSingle nos)throws IOException{
-        log.debug("SC: sendOrder: id=" + id + " size=" + nos.size + " instrument=" + nos.instrument.toString());
+        debug("SC: sendOrder: id=" + id + " size=" + nos.size + " instrument=" + nos.instrument.toString());
 
         OUT_QUEUE.put(id, nos);
 
-        if(omConn.isConnected()){
-            ObjectOutputStream os = new ObjectOutputStream(omConn.getOutputStream());
+        if(order_manager.isConnected()){
+            ObjectOutputStream os = new ObjectOutputStream(order_manager.getOutputStream());
             os.writeObject(MessageKind.ANSNewOrder);
             //os.writeObject("35=D;"); // is this a delete ?
             os.writeInt(id);
@@ -134,14 +99,14 @@ public class SampleClient extends Thread implements Client {
 
     @Override
     public void sendCancel (int idToCancel) {
-        log.debug("SC: sendCancel: id=" + idToCancel);
+        debug("SC: sendCancel: id=" + idToCancel);
 
-        if(omConn.isConnected()){
+        if(order_manager.isConnected()){
             try {
-                ObjectOutputStream os = new ObjectOutputStream(omConn.getOutputStream());
+                ObjectOutputStream os = new ObjectOutputStream(order_manager.getOutputStream());
                 os.writeObject(MessageKind.ANSCancel);
                 os.writeInt(idToCancel);
-                //OMconnection.sendMessage("cancel",idToCancel);
+                //order_managerection.sendMessage("cancel",idToCancel);
             }
             catch (IOException e){
                 e.printStackTrace();
@@ -151,18 +116,18 @@ public class SampleClient extends Thread implements Client {
 
     @Override
     public void partialFill(Order order){
-        log.debug(" PartialFill " + order);
+        debug(" PartialFill " + order);
     }
 
     @Override
     public void fullyFilled(Order order){
-        log.debug(" FullFill" + order);
+        debug(" FullFill" + order);
         OUT_QUEUE.remove(order.id);
     }
 
     @Override
     public void cancelled(Order order){
-        log.debug(" Cancelled" + order);
+        debug(" Cancelled" + order);
         OUT_QUEUE.remove(order.id);
     }
 
@@ -197,7 +162,7 @@ public class SampleClient extends Thread implements Client {
 
     /** Print out a summary of the Client, outstanding orders*/
     public void summary(){
-        log.debug(Thread.currentThread().getName() + " has: " + OUT_QUEUE.size() + " outstanding orders");
+        debug(Thread.currentThread().getName() + " has: " + OUT_QUEUE.size() + " outstanding orders");
 
         /*
         for(Map.Entry item : OUT_QUEUE.entrySet()){
@@ -210,12 +175,12 @@ public class SampleClient extends Thread implements Client {
     }
 
     public boolean readMessage() throws IOException, ClassNotFoundException{
-        while(omConn.getInputStream().available() > 0){
-            is = new ObjectInputStream(omConn.getInputStream());
+        while(order_manager.getInputStream().available() > 0){
+            is = new ObjectInputStream(order_manager.getInputStream());
 
             String fix = (String) is.readObject();
 
-            log.debug("SC: " + Thread.currentThread().getName() + " received fix message: " + fix);
+            debug("SC: " + Thread.currentThread().getName() + " received fix message: " + fix);
 
             String[] fixTags=fix.split(";");
 
@@ -231,13 +196,13 @@ public class SampleClient extends Thread implements Client {
     }
 
     void newOrderPending(FIXMessage m ){
-        //log.info("-----NewOrderPending-----");
+        //info("-----NewOrderPending-----");
     }
     void orderPartialFill(FIXMessage m ){
-        //log.info("-----PartialFill-----");
+        //info("-----PartialFill-----");
     }
     void orderfullFill(FIXMessage m ){
-        //log.info("-----FullFill-----");
+        //info("-----FullFill-----");
     }
 
     @Override
@@ -259,7 +224,7 @@ public class SampleClient extends Thread implements Client {
                 HelperObject.sleep(HelperObject.waitTime);
             }
         } catch (ClassNotFoundException e){
-            log.error("Received an weird message");
+            error("Received an weird message");
 
         } catch (IOException e){
             e.printStackTrace();

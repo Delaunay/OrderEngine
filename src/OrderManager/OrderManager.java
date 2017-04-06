@@ -6,6 +6,7 @@ import OrderClient.NewOrderSingle;
 import OrderManager.ClientThread.PendingNewOrder;
 import OrderRouter.Router;
 import TradeScreen.TradeScreen;
+import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
 import com.sun.management.OperatingSystemMXBean;
 
@@ -21,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import Utility.Connection.ConnectionType;
 
 /**
  * 			Order Manager listens to

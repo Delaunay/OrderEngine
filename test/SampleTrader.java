@@ -3,13 +3,10 @@ import OrderManager.Order;
 import TradeScreen.TradeScreen;
 import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
-import org.apache.log4j.Level;
 
-import javax.net.ServerSocketFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.util.HashMap;
 
 /**

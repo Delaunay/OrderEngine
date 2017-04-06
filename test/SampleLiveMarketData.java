@@ -5,8 +5,6 @@ import Utility.Connection;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.util.Random;
 
 /**
  *<br>- LiveMarketData listens to the OrderManager

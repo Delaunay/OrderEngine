@@ -1,9 +1,9 @@
 package OrderManager;
 
-import LiveMarketData.LiveMarketData;
 import Actor.Actor;
 import Actor.Message;
 import Database.Database;
+import LiveMarketData.LiveMarketData;
 import OrderManager.ClientThread.PendingNewOrder;
 import OrderRouter.Router;
 import Ref.Instrument;
@@ -11,7 +11,9 @@ import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
 import com.sun.management.OperatingSystemMXBean;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -185,7 +187,7 @@ public class OrderManager extends Actor{
             {
 				Message m = readMessage(router);
 
-				info(" calling " + m.op);
+				debug(" calling " + m.op);
 
 				switch (m.op) {
 					case ANSBestPrice:
@@ -270,7 +272,6 @@ public class OrderManager extends Actor{
 
 	public void sliceOrder(Message.TraderSliceOrder m) throws IOException {
 		PendingOrder po = orders.get(m.order_id);
-		Order o = po.order;
 		LinkedList<Slice> slice = slices.get(po.order.instrument);
 
 		if (slice == null) {
@@ -285,7 +286,6 @@ public class OrderManager extends Actor{
 		po.slice_num = 0;
 
 		while(order_size > 0){
-
 			if (order_size < slice_size)
 				slice_size = order_size;
 
@@ -293,33 +293,25 @@ public class OrderManager extends Actor{
 			slice.add(cslice);      // we need the slices by instrument for cross
 
 			po.slices.add(cslice);  // Each Order keep track of their slices
-            askBestPrice(m.order_id, po.slice_num, slice_size, po.slices.get(po.slice_num));
+            askBestPrice(m.order_id, po.slice_num, po.slices.get(po.slice_num));
 
 			order_size -= slice_size;
 			po.slice_num += 1;
 		}
 
-		info("Order size: " + po.size_remain + " Slices: " + po.slice_num + " SliceSize:" + m.slice_size);
+		debug("Order size: " + po.size_remain + " Slices: " + po.slice_num + " SliceSize:" + m.slice_size);
 
 		/*
-    	Order o = orders.get(id).order;
-		if (sliceSize > o.sizeRemaining() - o.sliceSizes()) {
-			sliceSize = o.sizeRemaining() - o.sliceSizes();
-		    //error("error sliceSize is bigger than remaining size to be filled on the order");
-		}
+		internalCross();
 
-		int sliceId = o.newSlice(sliceSize);
-		Order slice = o.slices.get(sliceId);
-
-		internalCross(id, slice);
-
-		int sizeRemaining = o.slices.get(sliceId).sizeRemaining();
-		if (sizeRemaining > 0) {
-			askBestPrice(id, sliceId, sizeRemaining, slice);
-		}*/
+        if (po.size_remain > 0) {
+            int slice_id = po.slices.size() - po.slice_num;
+            Slice to_order = po.slices.get(po.slice_num);
+            askBestPrice(m.order_id, slice_id, to_order);
+        }*/
 	}
 
-	private void internalCross(int id, Order o) throws IOException {
+	private void internalCross(/*int id, Order o*/) throws IOException {
         PendingOrder po = orders.get(id);
         LinkedList<Slice> slice = slices.get(po.order.instrument);
 
@@ -396,7 +388,6 @@ public class OrderManager extends Actor{
         PendingOrder po = orders.get(m.order_id);
         Slice slice = po.slices.get(m.slice_id);
 
-
 		slice.best_prices[router_id] = m.price;
 		slice.best_price_count += 1;
 
@@ -410,12 +401,11 @@ public class OrderManager extends Actor{
 	/** Ask for the best price to each router
 	 * 	@param id		Order id
 	 * 	@param sliceId  Slice id
-	 * 	@param size		size remaining to full the current slice
 	 * 	@param slice 	Order object
 	 * 	*/
-	private void askBestPrice(int id, int sliceId, int size, Slice slice) throws IOException {
+	private void askBestPrice(int id, int sliceId, Slice slice) throws IOException {
 		for (Socket r : routers) {
-			sendMessage(r, new Message.PriceAtSize(id, sliceId, slice.parent.order.instrument, size));
+			sendMessage(r, new Message.PriceAtSize(id, sliceId, slice.parent.order.instrument, slice.size));
 		}
 
 		// need to wait for these prices to come back before routing

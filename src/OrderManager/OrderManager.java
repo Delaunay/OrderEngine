@@ -167,10 +167,11 @@ public class OrderManager extends HelperObject{
 					case ANSBestPrice:
 						int OrderId = is.readInt();
 						int SliceId = is.readInt();
-						//debug("====> order_id " + OrderId);
+
 						Order slice = orders.get(OrderId).order.slices.get(SliceId);
 						slice.bestPrices[router_id] = is.readDouble();
 						slice.bestPriceCount += 1;
+
 						if (slice.bestPriceCount == slice.bestPrices.length)
 							routeOrder(SliceId, slice);
 						break;
@@ -211,16 +212,9 @@ public class OrderManager extends HelperObject{
 	}
 
     void sendMessageToClient(int client_id, String message){
-	    /*
-		ObjectOutputStream os = new ObjectOutputStream(client.getOutputStream());
-			os.writeObject(message);
-			os.flush(); //*/
-
         ClientThread client = client_threads.get(client_id);
         client.addMessage(message);
     }
-
-
 
 	// Actions
 	// ----------------------------------------------------------------

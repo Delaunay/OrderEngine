@@ -65,8 +65,8 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
             }
 
             messageHandler();
+
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
@@ -152,8 +152,6 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
                 case "44": // Price
                     m.price = Double.parseDouble(tag_value[1]);
                     break;
-
-
             }
         }
 
@@ -168,10 +166,6 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
         for(Map.Entry item : OUT_QUEUE.entrySet()){
             Utility.Util.print("id = " + item.getKey() + ", Order = " + item.getValue());
         } */
-    }
-
-    public boolean runOnce() throws IOException, ClassNotFoundException{
-        return readMessage();
     }
 
     public boolean readMessage() throws IOException, ClassNotFoundException{

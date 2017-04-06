@@ -20,10 +20,6 @@ public class SampleTrader extends OrderManagerClient implements TradeScreen, Run
         initLog(this.getClass().getName());
     }
 
-    public  boolean runOnce() throws IOException, ClassNotFoundException {
-        return readMessage();
-    }
-
 	public
     boolean readMessage() throws IOException, ClassNotFoundException{
         while(order_manager.getInputStream().available() > 0){

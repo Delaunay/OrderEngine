@@ -17,6 +17,11 @@ public class SampleLiveMarketData extends OrderManagerClient implements LiveMark
     public void setPrice(Order o) {
         o.initialMarketPrice = MockConfig.getFillPrice(o.instrument, 0);
     }
+
+    public void setPrice(Message.SetPrice m) {
+        setPrice(m.order);
+    }
+
     public void connectToOrderManager(InetSocketAddress address) throws IOException {
         connectToOrderManager(Connection.ConnectionType.LiveMarketDataConnection, address);
     }

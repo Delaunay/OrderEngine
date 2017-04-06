@@ -15,13 +15,14 @@ public class Order implements Serializable {
     int             bestPriceCount;
 
     int                 clientid;
-    ArrayList<Order>    slices;
-    ArrayList<Fill>     fills;
+    //ArrayList<Order>    slices;
+    //ArrayList<Fill>     fills;
     char                OrdStatus = 'A';    //OrdStatus is Fix 39, 'A' is 'Pending New'
 
     public Instrument instrument;
     public double initialMarketPrice;
 
+    /*
     public int sizeRemaining() {
         return size - sizeFilled();
     }
@@ -138,7 +139,7 @@ public class Order implements Serializable {
 
     void cancel() {
         //state=cancelled
-    }
+    }*/
 
     public Order(int clientId, int order_id, Instrument instrument, int size, int client_order_id) {
         this.id = order_id;
@@ -146,8 +147,8 @@ public class Order implements Serializable {
         this.size = size;
         this.clientid = clientId;
         this.instrument = instrument;
-        fills = new ArrayList<Fill>();
-        slices = new ArrayList<Order>();
+        //fills = new ArrayList<Fill>();
+        //slices = new ArrayList<Order>();
     }
 }
 
@@ -155,13 +156,3 @@ class Basket {
     Order[] orders;
 }
 
-class Fill implements Serializable {
-    //long id;
-    int size;
-    double price;
-
-    Fill(int size, double price) {
-        this.size = size;
-        this.price = price;
-    }
-}

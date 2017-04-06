@@ -142,10 +142,10 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
         //info("-----NewOrderPending-----");
     }
     void orderPartialFill(Message.FIXMessage m ){
-        //info("-----PartialFill-----");
+        info("-----PartialFill-----");
     }
     void orderfullFill(Message.FIXMessage m ){
-        //info("-----FullFill-----");
+        info("-----FullFill-----");
     }
 
     @Override

@@ -8,16 +8,18 @@ import java.io.Serializable;
 /**
  *  Message is the class specifying the data send
  *  between each actors.
- *<br>
- *<br>  We set some base rules for a message:
- *<br>      1. All Messages show extends and only extend `Message`
- *<br>          - i.e not hierarchy, Why? To make extra explicit what is sent
- *<br>      2. All Messages should be nested inside `Message`
- *<br>          - It makes it easier to lookup messages
- *<br>      3. All Messages should only use basic types
- *<br>          - char/int/double/etc...
- *<br>          - no classes
- *<br>          - Easier to see what is actually sent, prevent sending useless data
+ *
+ *  We set some base rules for a message:
+ *  <ol>
+ *      <li> All Messages show extends and only extend `Message`
+ *          <ul><li> i.e not hierarchy, Why? To make extra explicit what is sent</li></ul></li>
+ *       <li> All Messages should be nested inside `Message`
+ *           <ul><li> It makes it easier to lookup messages</li></ul></li>
+ *       <li> All Messages should only use basic types
+ *           <ul><li> char/int/double/etc...</li>
+ *               <li> no classes</li>
+ *               <li> Easier to see what is actually sent, prevent sending useless data</li></ul></li>
+ *  </ol>
  */
 public class Message implements Serializable{
     public MessageKind op;
@@ -260,6 +262,8 @@ public class Message implements Serializable{
         }
     }
 
+    // LiveMarket Data
+    // ------------------------------------------------------------------------
     public static class SetPrice extends Message{
         public Order order;
 

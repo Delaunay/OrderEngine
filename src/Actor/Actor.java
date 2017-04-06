@@ -10,9 +10,9 @@ import java.net.Socket;
 
 /**
  * An Actor is an Object that read messages from
- * <br>an ActorManager and perform an operation and send
- * <br>back a new message to the Actor Manager
- * <p>
+ * an ActorManager and perform an operation and send
+ * back a new message to the Actor Manager
+ *
  * <pre>
  *          Actor       Actor          Actor
  *               \        |           /
@@ -21,7 +21,7 @@ import java.net.Socket;
  *                |  Actor  Manager |
  *                '-----------------'
  * </pre>
- * </p>
+ *
  */
 public abstract class Actor extends HelperObject{
     public Socket connection(){

@@ -25,13 +25,15 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 /**
- * 			Order Manager listens to
- *<br> 				- Clients
- *<br> 				- TradingEngine (SampleTrader)
- *<br> 				- Routers       (Markets)
- * <p>
- * <pre>
- *     {@code
+ *  <p>Order Manager listens to:</p>
+ * 	<ul>
+ * 		<li> Clients						</li>
+ * 		<li> TradingEngine (SampleTrader)	</li>
+ * 		<li> Routers       (Markets)		</li>
+ * 	</ul>
+ * 	
+ * 	<pre>
+ * 	{@code
  *		Clients -> newOrder -> SampleTrader
  *
  *		Router -> newFill -> SampleTrader
@@ -39,8 +41,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *
  *		SampleTrader -> sliceOrder -> Cross -> RouteOrder
  *			         -> AcceptOrder -> Client}
- * </p>
- * </pre>
+ * 	</pre>
+ * 	
  */
 public class OrderManager extends Actor{
 	// Orders being processed
@@ -380,7 +382,6 @@ public class OrderManager extends Actor{
 		po.size_remain -= m.size;
 
         String message = "11=" + o.client_order_id + ";38=" + m.size + ";44=" + m.price;
-
 
 		if (o.sizeRemaining() == 0) {
             message = message + ";39=2";

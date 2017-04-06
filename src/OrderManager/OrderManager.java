@@ -23,6 +23,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import Actor.Actor;
+import Actor.Message;
+
+import javax.mail.MessageAware;
+
 /**
  * 			Order Manager listens to
  * 				- Clients
@@ -37,7 +42,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *		SampleTrader -> sliceOrder -> Cross -> RouteOrder
  *			   -> AcceptOrder -> Client
  */
-public class OrderManager extends HelperObject{
+public class OrderManager extends Actor{
 	// Orders being processed
     private ConcurrentHashMap<Integer, PendingOrder>
 			orders = new ConcurrentHashMap<>();
@@ -193,17 +198,19 @@ public class OrderManager extends HelperObject{
                 continue;
 
             while(trader.getInputStream().available() > 0) {
-                ObjectInputStream is = new ObjectInputStream(trader.getInputStream());
-                TradeScreen.MessageKind method = (TradeScreen.MessageKind) is.readObject();
+            	/*
+            	ObjectInputStream is = new ObjectInputStream(trader.getInputStream());
+                TradeScreen.MessageKind method = (TradeScreen.MessageKind) is.readObject(); */
 
-                debug(" calling " + method);
+				Message m = readMessage(trader);
+                debug(" calling " + m.op);
 
-                switch (method) {
+                switch (m.op) {
                     case ANSAcceptOrder:
-                        acceptOrder(is.readInt());
+                    	acceptOrder((Message.AcceptOrder) m);
                         break;
                     case ANSSliceOrder:
-                        sliceOrder(is.readInt(), is.readInt());
+                        sliceOrder((Message.SliceOrder) m);
                 }
                 work_was_done = true;
             }
@@ -223,21 +230,26 @@ public class OrderManager extends HelperObject{
 		orders.put(id, new PendingOrder(new Order(clientId, id, nos.instrument, nos.size, clientOrderId)));
 
 		sendMessageToClient(clientId, "11=" + clientOrderId + ";35=A;39=A;");
-		sendOrderToTrader  (id, orders.get(id).order, TradeScreen.MessageKind.REQNewOrder);
+
+		// sendOrderToTrader  (id, orders.get(id).order, TradeScreen.MessageKind.REQNewOrder);
+		sendMessage(getTrader(), new Message.NewOrderSingle(id, nos.instrument, nos.size, nos.price));
+
 		id++;
 	}
 
-	private void sendOrderToTrader(int id, Order o, Object method) throws IOException {
+	private void sendOrderToTrader(int id, Order o, Message method) throws IOException {
+    	/*
 		ObjectOutputStream ost = new ObjectOutputStream(getTrader().getOutputStream());
-
 			ost.writeObject(method);
 			ost.writeInt(id);
 			ost.writeObject(o);
-			ost.flush();
+			ost.flush();*/
+    	sendMessage(getTrader(), method);
 	}
 
-	public void acceptOrder(int id) throws IOException {
-		Order o = orders.get(id).order;
+	public void acceptOrder(Message.AcceptOrder m) throws IOException {
+		Order o = orders.get(m.order_id).order;
+
 		if (o.OrdStatus != 'A') { // Pending New
 			error("error accepting order that has already been accepted");
 			return;
@@ -245,11 +257,13 @@ public class OrderManager extends HelperObject{
 		o.OrdStatus = '0'; // New
 
         sendMessageToClient(o.clientid, "11=" + o.client_order_id + ";35=A;39=0");
-		price(id, o);
+		price(m.order_id, o);
 	}
 
-	public void sliceOrder(int id, int sliceSize) throws IOException {
-		Order o = orders.get(id).order;
+	public void sliceOrder(Message.SliceOrder m) throws IOException {
+		Order o = orders.get(m.order_id).order;
+		int sliceSize = m.slice_size;
+
 		if (sliceSize > o.sizeRemaining() - o.sliceSizes()) {
 			sliceSize = o.sizeRemaining() - o.sliceSizes();
 		    //error("error sliceSize is bigger than remaining size to be filled on the order");
@@ -282,7 +296,8 @@ public class OrderManager extends HelperObject{
 			o.cross(matchingOrder);
 
 			if (sizeBefore != o.sizeRemaining()) {
-				sendOrderToTrader(id, o, TradeScreen.MessageKind.REQCross);
+				//sendOrderToTrader(id, o, TradeScreen.MessageKind.REQCross);
+				sendMessage(getTrader(), new Message.Cross(id, o));
 			}
 		}
 	}
@@ -305,7 +320,8 @@ public class OrderManager extends HelperObject{
             message = message + ";39=1";
         }
 
-		sendOrderToTrader(id, o, TradeScreen.MessageKind.REQFill);
+		// sendOrderToTrader(id, o, TradeScreen.MessageKind.REQFill);
+		sendMessage(getTrader(), new Message.Fill(id, o));
         sendMessageToClient(o.clientid, message);
 	}
 
@@ -359,7 +375,8 @@ public class OrderManager extends HelperObject{
 
 	private void price(int id, Order o) throws IOException {
 		liveMarketData.setPrice(o);
-		sendOrderToTrader(id, o, TradeScreen.MessageKind.REQPrice);
+		//sendOrderToTrader(id, o, TradeScreen.MessageKind.REQPrice);
+		sendMessage(getTrader(), new Message.Price(id, o));
 	}
 
 	// Utilities

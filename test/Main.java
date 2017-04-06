@@ -41,7 +41,6 @@ public class Main {
             t.start();
         }
 
-
         LiveMarketData lmd = new SampleLiveMarketData(null);
 
         // Starting Order Manager

@@ -22,6 +22,7 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -55,9 +56,10 @@ public class OrderManager extends Actor{
     private ConcurrentLinkedQueue<PendingNewOrder>
 			pending_new_orders = new ConcurrentLinkedQueue<>();
 
-    private HashMap<Instrument, LinkedList<Slice>> slices = new HashMap<>(10);
+    private HashMap<Instrument, LinkedList<Slice>> sliceTable = new HashMap<>(10);
 
     private LiveMarketData      			liveMarketData;
+    private double                          eps         = 1e-6;
     private int                     		print_delta = 100;
 	private int 							id          = 0;
 	private int                     		next_trader = 0;
@@ -272,11 +274,11 @@ public class OrderManager extends Actor{
 
 	public void sliceOrder(Message.TraderSliceOrder m) throws IOException {
 		PendingOrder po = orders.get(m.order_id);
-		LinkedList<Slice> slice = slices.get(po.order.instrument);
+		LinkedList<Slice> slice = sliceTable.get(po.order.instrument);
 
 		if (slice == null) {
             slice = new LinkedList<Slice>();
-            slices.put(po.order.instrument, slice);
+            sliceTable.put(po.order.instrument, slice);
         }
 
 		int order_size = po.size_remain;
@@ -301,48 +303,93 @@ public class OrderManager extends Actor{
 
 		debug("Order size: " + po.size_remain + " Slices: " + po.slice_num + " SliceSize:" + m.slice_size);
 
-		/*
-		internalCross();
+
+		internalCross(po.order.instrument);
 
         if (po.size_remain > 0) {
             int slice_id = po.slices.size() - po.slice_num;
             Slice to_order = po.slices.get(po.slice_num);
             askBestPrice(m.order_id, slice_id, to_order);
-        }*/
-	}
-
-	private void internalCross(/*int id, Order o*/) throws IOException {
-        PendingOrder po = orders.get(id);
-        LinkedList<Slice> slice = slices.get(po.order.instrument);
-
-        if (slice == null)
-            return;
-
-        if (po.slice_num == slice.size()){
-
         }
-
-
-        /*
-		for (Map.Entry<Integer, PendingOrder> entry : orders.entrySet()) {
-			if (entry.getKey() == id)
-				continue;
-
-			Order matchingOrder = entry.getValue().order;
-
-			if (!(matchingOrder.instrument.equals(o.instrument)
-					&& matchingOrder.initialMarketPrice == o.initialMarketPrice))
-				continue;
-
-			int sizeBefore = o.sizeRemaining();
-
-			o.cross(matchingOrder);
-
-			if (sizeBefore != o.sizeRemaining()) {
-				sendMessage(getTrader(), new Message.Cross(id, o));
-			}
-		} */
 	}
+
+	private void internalCross(Instrument asset) {
+        List<Slice> slices = sliceTable.get(asset);
+
+        for(int i = 0; i < slices.size(); ++i){
+            Slice a = slices.get(i);
+            int asize = Math.abs(a.size);
+            for(int k = i; k < slices.size(); ++k){
+                Slice b = slices.get(k);
+                int bsize = Math.abs(b.size);
+
+                // same sign move one
+                if (a.size * b.size > 0)
+                    continue;
+
+                // Consume both slices Does arrayList gets invalidated ?
+                if (Math.abs(a.price - b.price) <= eps){
+                    slices.remove(i);
+                    slices.remove(k);
+
+                    if (a.size + b.size < 0){
+                        b.parent.size_remain -= b.size;
+                        a.parent.size_remain -= b.size;
+                        b.parent.slice_num   -= 1;
+                        a.parent.slice_num   -= 1;
+
+                        // Fully Filled
+                        sendSliceFill(b.parent, b.size ,a.price);
+                        sendSliceFill(a.parent, b.size, a.price);
+
+                        info("Internal cross worked");
+                    } else if (a.size - b.size > 0){
+                        b.parent.size_remain -= b.size;
+                        a.parent.size_remain -= b.size;
+                        b.parent.slice_num   -= 1;
+                        a.parent.slice_num   -= 0;
+
+                        // Partial Fill
+                        sendSliceFill(b.parent, b.size, a.price);
+                        sendSliceFill(a.parent, b.size, a.price);
+
+                        Slice nslice = new Slice(a.parent, a.size - b.size, a.price);
+
+                        a.parent.slices.add(nslice);
+                        slices.add(nslice);
+                        info("Internal cross worked");
+                    } else {
+                        b.parent.size_remain -= a.size;
+                        a.parent.size_remain -= a.size;
+                        b.parent.slice_num   -= 0;
+                        a.parent.slice_num   -= 1;
+
+                        sendSliceFill(a.parent, a.size, a.price);
+                        sendSliceFill(b.parent, a.size, a.price);
+
+                        Slice nslice = new Slice(b.parent, b.size - a.size, b.price);
+
+                        b.parent.slices.add(nslice);
+                        slices.add(nslice);
+                        info("Internal cross worked");
+                    }
+                }
+            }
+        }
+	}
+
+	void sendSliceFill(PendingOrder po, int size, double price){
+        String message = "11=" + po.order.client_order_id + ";38=" + size + ";44=" + price;
+        po.fills.add(new Fill(size, price));
+
+        if (po.size_remain == 0) {
+            message = message + ";39=2";
+            Database.write(po.order);
+        } else {
+            message = message + ";39=1";
+        }
+        sendMessageToClient(po.order.clientid, message);
+    }
 
 	Slice getNextSlice(PendingOrder order, int slice_id){
         ArrayList<Slice> slices = order.slices;

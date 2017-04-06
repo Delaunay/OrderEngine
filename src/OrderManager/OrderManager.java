@@ -59,7 +59,6 @@ public class OrderManager extends Actor{
 	private ServerSocketChannel 			serverSocket;
 	private Statistics						stats = new Statistics();
 
-
     public static class Slice{
         public int size;
         public double price;
@@ -186,6 +185,9 @@ public class OrderManager extends Actor{
 					case ANSNewFill:
 						newFill((Message.NewFill) m);
 						break;
+                    default:
+                        error("unsupported operation");
+                        break;
 				}
                 work_was_done = true;
 			}
@@ -205,10 +207,13 @@ public class OrderManager extends Actor{
 
                 switch (m.op) {
                     case ANSAcceptOrder:
-                    	acceptOrder((Message.AcceptOrder) m);
+                    	acceptOrder((Message.TraderAcceptOrder) m);
                         break;
                     case ANSSliceOrder:
-                        sliceOrder((Message.SliceOrder) m);
+                        sliceOrder((Message.TraderSliceOrder) m);
+                    default:
+                        error("unsupported operation");
+                        break;
                 }
                 work_was_done = true;
             }
@@ -231,18 +236,15 @@ public class OrderManager extends Actor{
 
 
 	protected void newOrder(int clientId, int clientOrderId, Message.NewOrderSingle nos) throws IOException {
-
-		orders.put(id, new PendingOrder(new Order(clientId, id, nos.instrument, nos.size, clientOrderId)));
-
+		PendingOrder po =  new PendingOrder(new Order(clientId, id, nos.instrument, nos.size, clientOrderId));
+        orders.put(id, po);
 		sendMessageToClient(clientId, "11=" + clientOrderId + ";35=A;39=A;");
-
-		sendMessage(getTrader(), new Message.NewOrderSingle(id, nos.instrument, nos.size, nos.price));
-
+		sendMessage(getTrader(), new Message.TraderNewOrder(id, po.order));
 		id++;
 	}
 
 
-	public void acceptOrder(Message.AcceptOrder m) throws IOException {
+	public void acceptOrder(Message.TraderAcceptOrder m) throws IOException {
 		Order o = orders.get(m.order_id).order;
 
 		if (o.OrdStatus != 'A') { // Pending New
@@ -255,7 +257,7 @@ public class OrderManager extends Actor{
 		price(m.order_id, o);
 	}
 
-	public void sliceOrder(Message.SliceOrder m) throws IOException {
+	public void sliceOrder(Message.TraderSliceOrder m) throws IOException {
 		PendingOrder po = orders.get(id);
 		LinkedList<Slice> slice = slices.get(po.order.instrument);
 
@@ -279,7 +281,7 @@ public class OrderManager extends Actor{
 			po.slice_num += 1;
 		}
 
-		debug("Order size: " + po.size_remain + " Slices: " + po.slice_num + " SliceSize:" + m.slice_size);
+		info("Order size: " + po.size_remain + " Slices: " + po.slice_num + " SliceSize:" + m.slice_size);
 
 		/*
     	Order o = orders.get(id).order;
@@ -332,6 +334,15 @@ public class OrderManager extends Actor{
 		} */
 	}
 
+	Order getNextSlice(Order order, int slice_id){
+        ArrayList<Order> slices = order.slices;
+
+        if (slice_id < slices.size()){
+            return slices.get(slice_id + 1);
+        }
+        return null;
+    }
+
 	// Incoming Router Messages
 	// ------------------------------------------------------------------------
 	private void newFill(Message.NewFill m) throws IOException {
@@ -342,6 +353,7 @@ public class OrderManager extends Actor{
 
 		po.slice_num -= 1;
 		po.size_remain -= m.size;
+
         String message = "11=" + o.client_order_id + ";38=" + m.size + ";44=" + m.price;
 
 		if (o.sizeRemaining() == 0) {
@@ -352,8 +364,10 @@ public class OrderManager extends Actor{
             message = message + ";39=1";
         }
         // We should execute next slice
+        Order next = getNextSlice(o, m.slice_id);
 
-		sendMessage(getTrader(), new Message.Fill(id, o));
+
+		sendMessage(getTrader(), new Message.TraderFill(id, o));
 		sendMessageToClient(o.clientid, message);
 	}
 
@@ -408,7 +422,7 @@ public class OrderManager extends Actor{
 
 	private void price(int id, Order o) throws IOException {
 		sendMessage(liveData, new Message.SetPrice(o));
-		sendMessage(getTrader(), new Message.Price(id, o));
+		sendMessage(getTrader(), new Message.TraderPrice(id, o));
 	}
 
 	// Utilities

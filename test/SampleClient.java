@@ -3,7 +3,6 @@ import OrderClient.Client;
 import OrderClient.NewOrderSingle;
 import OrderManager.Order;
 import Ref.Instrument;
-import Ref.Ric;
 import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
 import Utility.Util;
@@ -12,7 +11,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
-import java.util.Random;
 
 /**
  * 		- Client listens and writes to the OrderManager
@@ -20,13 +18,6 @@ import java.util.Random;
  *      - Receive updates from the OrderManager about the state of its orders
  */
 public class SampleClient extends OrderManagerClient implements Client, Runnable {
-    private static final Random RANDOM_NUM_GENERATOR = new Random();
-    private static final Instrument[] INSTRUMENTS = {
-            new Instrument(new Ric("VOD.L")),
-            new Instrument(new Ric("BP.L")),
-            new Instrument(new Ric("BT.L"))
-    };
-
     // queue for outgoing orders
     private HashMap<Integer, NewOrderSingle> OUT_QUEUE = new HashMap<>();
     // message id number used as a `primary key` thats why it is static
@@ -75,10 +66,10 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
     }
 
     public int sendOrder() throws IOException{
-        int size   = 1000; //RANDOM_NUM_GENERATOR.nextInt(5000);
-        int instid = RANDOM_NUM_GENERATOR.nextInt(3);   // instrument id
+        int size   = MockConfig.getClientOrderSize();
+        int instid = MockConfig.getAssetID();
 
-        Instrument instrument = INSTRUMENTS[instid];
+        Instrument instrument = MockConfig.getInstrument(instid);
         NewOrderSingle nos = new NewOrderSingle(size, instid, instrument);
         return sendOrder(nos);
     }
@@ -121,33 +112,6 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
         OUT_QUEUE.remove(order.id);
     }
 
-    FIXMessage readOrderManagerAnswer(String[] fixTags){
-        FIXMessage m = new FIXMessage();
-
-        for(int i = 0; i < fixTags.length; i++){
-            String[] tag_value = fixTags[i].split("=");
-            switch(tag_value[0]){
-                case "11": // clientOrderID
-                    m.OrderId = Integer.parseInt(tag_value[1]);
-                    break;
-                case "35": //
-                    m.MsgType = tag_value[1].charAt(0);
-                    break;
-                case "38":  // size
-                    m.size = Integer.parseInt(tag_value[1]);
-                    break;
-                case "39": // Status
-                    m.OrdStatus = tag_value[1].charAt(0);
-                    break;
-                case "44": // Price
-                    m.price = Double.parseDouble(tag_value[1]);
-                    break;
-            }
-        }
-
-        return m;
-    }
-
     /** Print out a summary of the Client, outstanding orders*/
     public void summary(){
         debug(Thread.currentThread().getName() + " has: " + OUT_QUEUE.size() + " outstanding orders");
@@ -163,9 +127,7 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
             }
 
             Message.FIXMessage fm = (Message.FIXMessage) m;
-
-            String[] fixTags= fm.message.split(";");
-            FIXMessage ret = readOrderManagerAnswer(fixTags);
+            Message.FIXMessageData ret = Message.readOrderManagerAnswer(fm.message);
 
             debug("SC: " + Thread.currentThread().getName() + " received fix message: " + fm.message);
 

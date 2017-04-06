@@ -55,27 +55,35 @@ public class Message implements Serializable{
         ANSCancel,
     }
 
-    static class FIXMessageData{
-        int     OrderId	=	-1;
-        char    MsgType;
-        int     OrdStatus;
+    static public class FIXMessageData{
+        public int    OrderId	=	-1;
+        public char   MsgType;
+        public int    OrdStatus;
+        public int    size;
+        public double price;
     }
 
-    static FIXMessageData readOrderManagerAnswer(String msg){
+    static public FIXMessageData readOrderManagerAnswer(String msg){
         String[] fixTags = msg.split(";");
         FIXMessageData m = new FIXMessageData();
 
         for(int i = 0; i < fixTags.length; i++){
             String[] tag_value = fixTags[i].split("=");
             switch(tag_value[0]){
-                case "11":
+                case "11": // clientOrderID
                     m.OrderId = Integer.parseInt(tag_value[1]);
                     break;
-                case "35":
+                case "35": //
                     m.MsgType = tag_value[1].charAt(0);
                     break;
-                case "39":
+                case "38":  // size
+                    m.size = Integer.parseInt(tag_value[1]);
+                    break;
+                case "39": // Status
                     m.OrdStatus = tag_value[1].charAt(0);
+                    break;
+                case "44": // Price
+                    m.price = Double.parseDouble(tag_value[1]);
                     break;
             }
         }
@@ -189,21 +197,22 @@ public class Message implements Serializable{
 
     //      Trader
     // ------------------------------------------------------------------------
-    public static class NewOrder extends Message{
+    public static class TraderNewOrder extends Message{
         public int   order_id;
         public Order order;
 
-        public NewOrder(int order_id_, Order order_){
+        public TraderNewOrder(int order_id_, Order order_){
+            op       = MessageKind.REQNewOrder;
             order_id = order_id_;
             order    = order_;
         }
     }
 
-    public static class Price extends Message{
+    public static class TraderPrice extends Message{
         public int   order_id;
         public Order order;
 
-        public Price(int order_id_, Order order_){
+        public TraderPrice(int order_id_, Order order_){
             op       = MessageKind.REQPrice;
             order_id = order_id_;
             order    = order_;
@@ -218,42 +227,42 @@ public class Message implements Serializable{
         }
     }
 
-    public static class Fill extends Message{
+    public static class TraderFill extends Message{
         public int   order_id;
         public Order order;
 
-        public Fill(int order_id_, Order order_){
+        public TraderFill(int order_id_, Order order_){
             op       = MessageKind.REQFill;
             order_id = order_id_;
             order    = order_;
         }
     }
 
-    public static class Cross extends Message{
+    public static class TraderCross extends Message{
         public int   order_id;
         public Order order;
 
-        public Cross(int order_id_, Order order_){
+        public TraderCross(int order_id_, Order order_){
             op       = MessageKind.REQCross;
             order_id = order_id_;
             order    = order_;
         }
     }
 
-    public static class AcceptOrder extends Message{
+    public static class TraderAcceptOrder extends Message{
         public int order_id;
 
-        public AcceptOrder(int order_id_){
+        public TraderAcceptOrder(int order_id_){
             op       = MessageKind.ANSAcceptOrder;
             order_id = order_id_;
         }
     }
 
-    public static class SliceOrder extends Message{
+    public static class TraderSliceOrder extends Message{
         public int order_id;
         public int slice_size;
 
-        public SliceOrder(int order_id_, int slice_size_){
+        public TraderSliceOrder(int order_id_, int slice_size_){
             op          = MessageKind.ANSSliceOrder;
             order_id    = order_id_;
             slice_size  = slice_size_;

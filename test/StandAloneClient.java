@@ -1,3 +1,6 @@
+import Utility.Configuration;
+import org.apache.log4j.BasicConfigurator;
+
 import java.net.InetSocketAddress;
 
 public class StandAloneClient {
@@ -10,10 +13,21 @@ public class StandAloneClient {
      *          -config    Specify the configuration file to load
      */
     public static void main(String[] args){
+        BasicConfigurator.configure();
+        /*HashSet<String> options = new HashSet<>();
+            options.add("port");
+            options.add("name");
+            options.add("config");
+
+        HashMap opt = Util.readArgs(args, options); */
+        Configuration conf = new Configuration();
+
+        String om_hostname = conf.getHostname();
+        int    om_port     = conf.getOrderManagerPort();
 
         SampleClient client = new SampleClient(
                 10,10,
-                new InetSocketAddress("localhost", 200));
+                new InetSocketAddress(om_hostname, om_port));
 
         client.run();
     }

@@ -1,4 +1,6 @@
 import OrderManager.OrderManager;
+import Utility.Configuration;
+import org.apache.log4j.BasicConfigurator;
 
 public class StandAloneOM {
 
@@ -13,8 +15,20 @@ public class StandAloneOM {
      */
 
     public static void main(String[] args){
-        //LiveMarketData liveMarketData = new SampleLiveMarketData();
-        OrderManager order_manager = new OrderManager(2000);
-        order_manager.run();
+        BasicConfigurator.configure();
+        /*HashSet<String> options = new HashSet<>();
+            options.add("port");
+            options.add("name");
+            options.add("config");
+
+        HashMap opt = Util.readArgs(args, options); */
+        Configuration conf = new Configuration();
+
+        String om_hostname = conf.getHostname();
+        int    om_port     = conf.getOrderManagerPort();
+
+
+        OrderManager order_manager = new OrderManager(om_port, liveMarketData);
+            order_manager.run();
     }
 }

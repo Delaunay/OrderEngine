@@ -11,9 +11,6 @@ public class Order implements Serializable {
     public int      id;
     public int      client_order_id;
     int             size;
-    double[]        bestPrices;
-    int             bestPriceCount;
-
     int                 clientid;
     //ArrayList<Order>    slices;
     //ArrayList<Fill>     fills;

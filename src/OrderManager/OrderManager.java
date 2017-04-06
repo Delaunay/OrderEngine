@@ -65,18 +65,6 @@ public class OrderManager extends Actor{
 	private ServerSocketChannel 			serverSocket;
 	private Statistics						stats = new Statistics();
 
-    public static class Slice{
-        public int size;
-        public double price;
-        public PendingOrder parent;
-
-        public Slice(PendingOrder p, int s, double px){
-            parent = p;
-            price = px;
-            size = s;
-        }
-    }
-
     void init(int port, LiveMarketData liveData){
         try {
             serverSocket = ServerSocketChannel.open();
@@ -292,6 +280,7 @@ public class OrderManager extends Actor{
 
 		int order_size = po.size_remain;
 		int slice_size = m.slice_size;
+        Slice cslice;
 
 		po.slice_num = 0;
 
@@ -300,9 +289,11 @@ public class OrderManager extends Actor{
 			if (order_size < slice_size)
 				slice_size = order_size;
 
-			o.newSlice(slice_size);
-			slice.add(new Slice(po, slice_size, po.order.initialMarketPrice));
-            askBestPrice(m.order_id, po.slice_num, slice_size, o.slices.get(po.slice_num));
+			cslice = new Slice(po, slice_size, po.order.initialMarketPrice);
+			slice.add(cslice);      // we need the slices by instrument for cross
+
+			po.slices.add(cslice);  // Each Order keep track of their slices
+            askBestPrice(m.order_id, po.slice_num, slice_size, po.slices.get(po.slice_num));
 
 			order_size -= slice_size;
 			po.slice_num += 1;
@@ -361,8 +352,8 @@ public class OrderManager extends Actor{
 		} */
 	}
 
-	Order getNextSlice(Order order, int slice_id){
-        ArrayList<Order> slices = order.slices;
+	Slice getNextSlice(PendingOrder order, int slice_id){
+        ArrayList<Slice> slices = order.slices;
 
         if (slice_id + 1 < slices.size()){
             return slices.get(slice_id + 1);
@@ -375,39 +366,42 @@ public class OrderManager extends Actor{
 	private void newFill(Message.NewFill m) throws IOException {
         PendingOrder po = orders.get(m.order_id);
 
-	    Order o = po.order;
-		o.slices.get(m.slice_id).createFill(m.size, m.price);
-
+        po.fills.add(new Fill(m.size, m.price));
 		po.slice_num -= 1;
 		po.size_remain -= m.size;
+		po.cost += m.size * m.price;
 
-        String message = "11=" + o.client_order_id + ";38=" + m.size + ";44=" + m.price;
+        String message = "11=" + po.order.client_order_id + ";38=" + m.size + ";44=" + m.price;
 
-		if (o.sizeRemaining() == 0) {
+		if (po.size_remain == 0) {
             message = message + ";39=2";
-			Database.write(o);
+			Database.write(po.order);
 		} else {
             message = message + ";39=1";
         }
 
         // We should execute next slice
-        Order next = getNextSlice(o, m.slice_id);
+        Slice next = getNextSlice(po, m.slice_id);
 		if (next != null){
 
         }
 
-		sendMessage(getTrader(), new Message.TraderFill(id, o));
-		sendMessageToClient(o.clientid, message);
+		sendMessage(getTrader(), new Message.TraderFill(id, po.order));
+		sendMessageToClient(po.order.clientid, message);
 	}
 
 	void bestPrice(int router_id, Message.BestPrice m) throws IOException{
-		Order slice = orders.get(m.order_id).order.slices.get(m.slice_id);
+		// Order slice = orders.get(m.order_id).order.slices.get(m.slice_id);
 
-		slice.bestPrices[router_id] = m.price;
-		slice.bestPriceCount += 1;
+        PendingOrder po = orders.get(m.order_id);
+        Slice slice = po.slices.get(m.slice_id);
 
-		if (slice.bestPriceCount == slice.bestPrices.length)
-			routeOrder(m.slice_id, slice);
+
+		slice.best_prices[router_id] = m.price;
+		slice.best_price_count += 1;
+
+		if (slice.best_price_count  == slice.best_prices.length)
+			routeOrder(m.slice_id, po);
 	}
 
 	// Outcoming Router Messages
@@ -417,25 +411,26 @@ public class OrderManager extends Actor{
 	 * 	@param id		Order id
 	 * 	@param sliceId  Slice id
 	 * 	@param size		size remaining to full the current slice
-	 * 	@param order	Order object
+	 * 	@param slice 	Order object
 	 * 	*/
-	private void askBestPrice(int id, int sliceId, int size, Order order) throws IOException {
+	private void askBestPrice(int id, int sliceId, int size, Slice slice) throws IOException {
 		for (Socket r : routers) {
-			sendMessage(r, new Message.PriceAtSize(id, sliceId, order.instrument, size));
+			sendMessage(r, new Message.PriceAtSize(id, sliceId, slice.parent.order.instrument, size));
 		}
 
 		// need to wait for these prices to come back before routing
-		order.bestPrices = new double[routers.size()];
-		order.bestPriceCount = 0;
+		slice.best_prices = new double[routers.size()];
+		slice.best_price_count = 0;
 	}
 
 	/** Buy/Sell the instrument at the min/max price possible */
-	private void routeOrder(int sliceId, Order o) throws IOException {
+	private void routeOrder(int slice_id, PendingOrder po) throws IOException {
 		// if o.size < 0 => We are selling
-		int size = o.sizeRemaining();
-		int index = size > 0 ? getBestBuyPrice(o) : getBestSellPrice(o);
+		int size = po.size_remain;
+		Slice slice = po.slices.get(slice_id);
+		int index = size > 0 ? getBestBuyPrice(slice) : getBestSellPrice(slice);
 
-		sendMessage(routers.get(index), new Message.RouteOrder(o.id, sliceId, o.instrument, size));
+		sendMessage(routers.get(index), new Message.RouteOrder(po.order.id, slice_id, po.order.instrument, size));
 	}
 
 	// TODO
@@ -457,27 +452,27 @@ public class OrderManager extends Actor{
 
 	// Utilities
 	// ----------------------------------------------------------------
-	static int getBestBuyPrice(Order o){
+	static int getBestBuyPrice(Slice slice){
 		int minIndex = 0;
-		double min = o.bestPrices[0];
+		double min = slice.best_prices[0];
 
-		for (int i = 1; i < o.bestPrices.length; i++) {
-			if (min > o.bestPrices[i]) {
+		for (int i = 1; i < slice.best_price_count; i++) {
+			if (min > slice.best_prices[i]) {
 				minIndex = i;
-				min = o.bestPrices[i];
+				min = slice.best_prices[i];
 			}
 		}
 		return minIndex;
 	}
 
-	static int getBestSellPrice(Order o){
+	static int getBestSellPrice(Slice slice){
 		int maxIndex = 0;
-		double max = o.bestPrices[0];
+		double max = slice.best_prices[0];
 
-		for (int i = 1; i < o.bestPrices.length; i++) {
-			if (max < o.bestPrices[i]) {
+		for (int i = 1; i < slice.best_price_count; i++) {
+			if (max < slice.best_prices[i]) {
 				maxIndex = i;
-				max = o.bestPrices[i];
+				max = slice.best_prices[i];
 			}
 		}
 		return maxIndex;

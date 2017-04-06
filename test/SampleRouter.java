@@ -52,10 +52,6 @@ public class SampleRouter extends OrderManagerClient implements Router, Runnable
 
     public boolean runOnce() throws IOException, ClassNotFoundException {
         while (order_manager.getInputStream().available() > 0) {
-
-            /*is = new ObjectInputStream(order_manager.getInputStream());
-            Router.MessageKind methodName = (Router.MessageKind) is.readObject(); */
-
             Message m = readMessage(order_manager);
 
             debug("Order Router received method call for: " + m.op);
@@ -86,14 +82,6 @@ public class SampleRouter extends OrderManagerClient implements Router, Runnable
 
         sendMessage(order_manager,
                 new Message.NewFill(id, sliceId, 0, fillPrice, fillSize));
-        /*
-        os = new ObjectOutputStream(order_manager.getOutputStream());
-            os.writeObject(MessageKind.ANSNewFill);
-            os.writeInt(id);
-            os.writeInt(sliceId);
-            os.writeInt(fillSize);
-            os.writeDouble(fillPrice);
-            os.flush(); */
     }
 
     @Override
@@ -104,14 +92,6 @@ public class SampleRouter extends OrderManagerClient implements Router, Runnable
         Instrument i = m.asset;
 
         sendMessage(order_manager, new Message.BestPrice(id, sliceId, 0, getPriceAtSize(i, size)));
-
-        /*
-        os = new ObjectOutputStream(order_manager.getOutputStream());
-            os.writeObject(MessageKind.ANSBestPrice);
-            os.writeInt(id);
-            os.writeInt(sliceId);
-            os.writeDouble(getPriceAtSize(i, size));
-            os.flush(); */
     }
 
     // TODO

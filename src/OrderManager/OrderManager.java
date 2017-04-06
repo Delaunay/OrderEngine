@@ -25,9 +25,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import Actor.Actor;
 import Actor.Message;
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 
-import javax.mail.MessageAware;
 
 /**
  * 			Order Manager listens to
@@ -164,9 +162,6 @@ public class OrderManager extends Actor{
 			router = routers.get(router_id);
 
 			while (router.getInputStream().available() > 0) {
-				/*
-				ObjectInputStream is = new ObjectInputStream(router.getInputStream());
-				Router.MessageKind method = (Router.MessageKind) is.readObject(); */
 				Message m = readMessage(router);
 
 				debug(" calling " + m.op);
@@ -193,10 +188,6 @@ public class OrderManager extends Actor{
                 continue;
 
             while(trader.getInputStream().available() > 0) {
-            	/*
-            	ObjectInputStream is = new ObjectInputStream(trader.getInputStream());
-                TradeScreen.MessageKind method = (TradeScreen.MessageKind) is.readObject(); */
-
 				Message m = readMessage(trader);
                 debug(" calling " + m.op);
 
@@ -213,22 +204,26 @@ public class OrderManager extends Actor{
 		return work_was_done;
 	}
 
+    void sendMessageToClient(int client_id, Message m){
+        ClientThread client = client_threads.get(client_id);
+        client.addMessage(m);
+    }
+
     void sendMessageToClient(int client_id, String message){
         ClientThread client = client_threads.get(client_id);
-        client.addMessage(message);
+        client.addMessage(new Message.FIXMessage(message));
     }
 
 	// Actions
 	// ----------------------------------------------------------------
 
 
-	protected void newOrder(int clientId, int clientOrderId, NewOrderSingle nos) throws IOException {
+	protected void newOrder(int clientId, int clientOrderId, Message.NewOrderSingle nos) throws IOException {
 
 		orders.put(id, new PendingOrder(new Order(clientId, id, nos.instrument, nos.size, clientOrderId)));
 
 		sendMessageToClient(clientId, "11=" + clientOrderId + ";35=A;39=A;");
 
-		// sendOrderToTrader  (id, orders.get(id).order, TradeScreen.MessageKind.REQNewOrder);
 		sendMessage(getTrader(), new Message.NewOrderSingle(id, nos.instrument, nos.size, nos.price));
 
 		id++;
@@ -284,7 +279,6 @@ public class OrderManager extends Actor{
 			o.cross(matchingOrder);
 
 			if (sizeBefore != o.sizeRemaining()) {
-				//sendOrderToTrader(id, o, TradeScreen.MessageKind.REQCross);
 				sendMessage(getTrader(), new Message.Cross(id, o));
 			}
 		}
@@ -312,7 +306,8 @@ public class OrderManager extends Actor{
 
 		// sendOrderToTrader(id, o, TradeScreen.MessageKind.REQFill);
 		sendMessage(getTrader(), new Message.Fill(id, o));
-        sendMessageToClient(o.clientid, message);
+
+		sendMessageToClient(o.clientid, message);
 	}
 
 	void bestPrice(int router_id, Message.BestPrice m) throws IOException{
@@ -336,16 +331,7 @@ public class OrderManager extends Actor{
 	 * 	*/
 	private void askBestPrice(int id, int sliceId, int size, Order order) throws IOException {
 		for (Socket r : routers) {
-
 			sendMessage(r, new Message.PriceAtSize(id, sliceId, order.instrument, size));
-			/*
-			ObjectOutputStream os = new ObjectOutputStream(r.getOutputStream());
-				os.writeObject(Router.MessageKind.REQPriceAtSize);
-				os.writeInt(id);
-				os.writeInt(sliceId);
-				os.writeObject(order.instrument);
-				os.writeInt(order.sizeRemaining());
-				os.flush(); */
 		}
 
 		// need to wait for these prices to come back before routing
@@ -360,14 +346,6 @@ public class OrderManager extends Actor{
 		int index = size > 0 ? getBestBuyPrice(o) : getBestSellPrice(o);
 
 		sendMessage(routers.get(index), new Message.RouteOrder(o.id, sliceId, o.instrument, size));
-		/*
-		ObjectOutputStream os = new ObjectOutputStream(routers.get(index).getOutputStream());
-			os.writeObject(Router.MessageKind.REQRouteOrder);
-			os.writeInt(o.id);
-			os.writeInt(sliceId);
-			os.writeInt(o.sizeRemaining());
-			os.writeObject(o.instrument);
-			os.flush(); */
 	}
 
 	// TODO
@@ -383,7 +361,6 @@ public class OrderManager extends Actor{
 
 	private void price(int id, Order o) throws IOException {
 		liveMarketData.setPrice(o);
-		//sendOrderToTrader(id, o, TradeScreen.MessageKind.REQPrice);
 		sendMessage(getTrader(), new Message.Price(id, o));
 	}
 

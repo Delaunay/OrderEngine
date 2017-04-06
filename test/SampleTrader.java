@@ -84,22 +84,11 @@ public class SampleTrader extends OrderManagerClient implements TradeScreen, Run
 	@Override
 	public void acceptOrder(int id) throws IOException {
         sendMessage(order_manager, new Message.AcceptOrder(id));
-        /*
-        os = new ObjectOutputStream(order_manager.getOutputStream());
-            os.writeObject(MessageKind.ANSAcceptOrder);
-            os.writeInt(id);
-            os.flush(); */
 	}
 
 	@Override
 	public void sliceOrder(int id, int sliceSize) throws IOException {
         sendMessage(order_manager, new Message.SliceOrder(id, sliceSize));
-        /*
-		os = new ObjectOutputStream(order_manager.getOutputStream());
-            os.writeObject(MessageKind.ANSSliceOrder);
-            os.writeInt(id);
-            os.writeInt(sliceSize);
-            os.flush(); */
 	}
 	@Override
 	public void price(Message.Price m) throws IOException {

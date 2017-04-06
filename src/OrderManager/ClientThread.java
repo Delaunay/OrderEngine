@@ -14,7 +14,7 @@ class ClientThread extends Actor implements Runnable {
 	private int client_id;
 	private Socket client;
 	private OrderManager order_manager;
-	private ConcurrentLinkedQueue<String> pending_messages;
+	private ConcurrentLinkedQueue<Message> pending_messages;
 
 	ClientThread(int clientId, Socket client, OrderManager oM) {
 		this.client_id = clientId;
@@ -24,26 +24,20 @@ class ClientThread extends Actor implements Runnable {
 		pending_messages = new ConcurrentLinkedQueue<>();
 	}
 
-	void addMessage(String message){
-		pending_messages.add(message);
+	void addMessage(Message m){
+		pending_messages.add(m);
 	}
 
 	void sendMessages(){
 		// send message
 		int k = 0;
 		int size = pending_messages.size();
-		String message = pending_messages.poll();
+		Message message = pending_messages.poll();
 
 		while(message != null && k < size){
-			try {
-				ObjectOutputStream os = new ObjectOutputStream(client.getOutputStream());
-				os.writeObject(message);
-				os.flush();
-			} catch (IOException e){
-				error("Could not send message to client");
-			}
-			k += 1;
+			sendMessage(client, message);
 			message = pending_messages.poll();
+			k += 1;
 		}
 	}
 
@@ -51,13 +45,6 @@ class ClientThread extends Actor implements Runnable {
 		int client_id;
 		int client_order_id;
 		Message.NewOrderSingle new_order;
-
-		/*
-		PendingNewOrder(int id, int oid, NewOrderSingle nos){
-			client_id = id;
-			client_order_id = oid;
-			new_order = nos;
-		}*/
 
 		PendingNewOrder(int id, Message.NewOrderSingle a){
 			client_id = id;
@@ -71,27 +58,18 @@ class ClientThread extends Actor implements Runnable {
 			if (pending_messages.size() > 0)
 				sendMessages();
 
-			try {
+			Message m = readMessage(client);
+			debug(" calling " + m.op);
 
-				Message m = readMessage(client);
-				/*
-				ObjectInputStream is = new ObjectInputStream(client.getInputStream());
-				Client.MessageKind method = (Client.MessageKind) is.readObject(); */
-				debug(" calling " + m.op);
-
-				switch (m.op) {
-					case ANSNewOrder:
-						order_manager.addNewOrder(
-								new PendingNewOrder(client_id, (Message.NewOrderSingle) m));
-						break;
-					case ANSCancel:
-						break;
-				}
-			} catch (ClassNotFoundException e) {
-				error("Client message was not understood! A Message must start with a `Client.MessageKind`");
-			} catch (IOException e) {
-				e.printStackTrace();
+			switch (m.op) {
+				case ANSNewOrder:
+					order_manager.addNewOrder(
+							new PendingNewOrder(client_id, (Message.NewOrderSingle) m));
+					break;
+				case ANSCancel:
+					break;
 			}
+
 			sleep(10);
 		}
 	}

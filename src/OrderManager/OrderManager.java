@@ -348,6 +348,7 @@ public class OrderManager extends Actor{
 
 		po.slice_num -= 1;
 		po.size_remain -= m.size;
+
         String message = "11=" + o.client_order_id + ";38=" + m.size + ";44=" + m.price;
 
 		if (o.sizeRemaining() == 0) {

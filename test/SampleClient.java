@@ -117,32 +117,6 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
         OUT_QUEUE.remove(order.id);
     }
 
-    FIXMessage readOrderManagerAnswer(String[] fixTags){
-        FIXMessage m = new FIXMessage();
-
-        for(int i = 0; i < fixTags.length; i++){
-            String[] tag_value = fixTags[i].split("=");
-            switch(tag_value[0]){
-                case "11": // clientOrderID
-                    m.OrderId = Integer.parseInt(tag_value[1]);
-                    break;
-                case "35": //
-                    m.MsgType = tag_value[1].charAt(0);
-                    break;
-                case "38":  // size
-                    m.size = Integer.parseInt(tag_value[1]);
-                    break;
-                case "39": // Status
-                    m.OrdStatus = tag_value[1].charAt(0);
-                    break;
-                case "44": // Price
-                    m.price = Double.parseDouble(tag_value[1]);
-                    break;
-            }
-        }
-
-        return m;
-    }
 
     /** Print out a summary of the Client, outstanding orders*/
     public void summary(){
@@ -159,9 +133,7 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
             }
 
             Message.FIXMessage fm = (Message.FIXMessage) m;
-
-            String[] fixTags= fm.message.split(";");
-            FIXMessage ret = readOrderManagerAnswer(fixTags);
+            Message.FIXMessageData ret = Message.readOrderManagerAnswer(fm.message);
 
             debug("SC: " + Thread.currentThread().getName() + " received fix message: " + fm.message);
 

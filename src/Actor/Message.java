@@ -54,27 +54,35 @@ public class Message implements Serializable{
         ANSCancel,
     }
 
-    static class FIXMessageData{
-        int     OrderId	=	-1;
-        char    MsgType;
-        int     OrdStatus;
+    static public class FIXMessageData{
+        public int    OrderId	=	-1;
+        public char   MsgType;
+        public int    OrdStatus;
+        public int    size;
+        public double price;
     }
 
-    static FIXMessageData readOrderManagerAnswer(String msg){
+    static public FIXMessageData readOrderManagerAnswer(String msg){
         String[] fixTags = msg.split(";");
         FIXMessageData m = new FIXMessageData();
 
         for(int i = 0; i < fixTags.length; i++){
             String[] tag_value = fixTags[i].split("=");
             switch(tag_value[0]){
-                case "11":
+                case "11": // clientOrderID
                     m.OrderId = Integer.parseInt(tag_value[1]);
                     break;
-                case "35":
+                case "35": //
                     m.MsgType = tag_value[1].charAt(0);
                     break;
-                case "39":
+                case "38":  // size
+                    m.size = Integer.parseInt(tag_value[1]);
+                    break;
+                case "39": // Status
                     m.OrdStatus = tag_value[1].charAt(0);
+                    break;
+                case "44": // Price
+                    m.price = Double.parseDouble(tag_value[1]);
                     break;
             }
         }

@@ -3,6 +3,7 @@ import Ref.Instrument;
 import Ref.Ric;
 import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
+import Actor.Message;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -51,26 +52,22 @@ public class SampleRouter extends OrderManagerClient implements Router, Runnable
 
     public boolean runOnce() throws IOException, ClassNotFoundException {
         while (order_manager.getInputStream().available() > 0) {
-            is = new ObjectInputStream(order_manager.getInputStream());
 
-            Router.MessageKind methodName = (Router.MessageKind) is.readObject();
+            /*is = new ObjectInputStream(order_manager.getInputStream());
+            Router.MessageKind methodName = (Router.MessageKind) is.readObject(); */
 
-            debug("Order Router received method call for: " + methodName);
+            Message m = readMessage(order_manager);
+
+            debug("Order Router received method call for: " + m.op);
 
             // Order Dispatch
-            switch (methodName) {
+            switch (m.op) {
                 case REQRouteOrder:
-                    routeOrder(is.readInt(),
-                            is.readInt(),
-                            is.readInt(),
-                            (Instrument) is.readObject());
+                    routeOrder((Message.RouteOrder) m);
                     return true;
 
                 case REQPriceAtSize:
-                    priceAtSize(is.readInt(),
-                            is.readInt(),
-                            (Instrument) is.readObject(),
-                            is.readInt());
+                    priceAtSize((Message.PriceAtSize) m);
                     return true;
             }
         }
@@ -78,27 +75,43 @@ public class SampleRouter extends OrderManagerClient implements Router, Runnable
     }
 
     @Override
-    public void routeOrder(int id, int sliceId, int size, Instrument i) throws IOException {
+    public void routeOrder(Message.RouteOrder m) throws IOException {
+        int id = m.order_id;
+        int sliceId = m.slice_id;
+        int size = m.size;
+        Instrument i = m.asset;
+
         int    fillSize  =  getFillSize(i, size);
         double fillPrice = getFillPrice(i, size);
 
+        sendMessage(order_manager,
+                new Message.NewFill(id, sliceId, 0, fillPrice, fillSize));
+        /*
         os = new ObjectOutputStream(order_manager.getOutputStream());
             os.writeObject(MessageKind.ANSNewFill);
             os.writeInt(id);
             os.writeInt(sliceId);
             os.writeInt(fillSize);
             os.writeDouble(fillPrice);
-            os.flush();
+            os.flush(); */
     }
 
     @Override
-    public void priceAtSize(int id, int sliceId, Instrument i, int size) throws IOException {
+    public void priceAtSize(Message.PriceAtSize m) throws IOException {
+        int id = m.order_id;
+        int sliceId = m.slice_id;
+        int size = m.size;
+        Instrument i = m.asset;
+
+        sendMessage(order_manager, new Message.BestPrice(id, sliceId, 0, getPriceAtSize(i, size)));
+
+        /*
         os = new ObjectOutputStream(order_manager.getOutputStream());
             os.writeObject(MessageKind.ANSBestPrice);
             os.writeInt(id);
             os.writeInt(sliceId);
             os.writeDouble(getPriceAtSize(i, size));
-            os.flush();
+            os.flush(); */
     }
 
     // TODO

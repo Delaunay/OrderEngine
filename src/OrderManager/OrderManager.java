@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import Actor.Actor;
 import Actor.Message;
+import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 
 import javax.mail.MessageAware;
 
@@ -163,26 +164,20 @@ public class OrderManager extends Actor{
 			router = routers.get(router_id);
 
 			while (router.getInputStream().available() > 0) {
+				/*
 				ObjectInputStream is = new ObjectInputStream(router.getInputStream());
-				Router.MessageKind method = (Router.MessageKind) is.readObject();
+				Router.MessageKind method = (Router.MessageKind) is.readObject(); */
+				Message m = readMessage(router);
 
-				debug(" calling " + method);
+				debug(" calling " + m.op);
 
-				switch (method) {
+				switch (m.op) {
 					case ANSBestPrice:
-						int OrderId = is.readInt();
-						int SliceId = is.readInt();
-
-						Order slice = orders.get(OrderId).order.slices.get(SliceId);
-						slice.bestPrices[router_id] = is.readDouble();
-						slice.bestPriceCount += 1;
-
-						if (slice.bestPriceCount == slice.bestPrices.length)
-							routeOrder(SliceId, slice);
+						bestPrice(router_id, (Message.BestPrice) m);
 						break;
 
 					case ANSNewFill:
-						newFill(is.readInt(), is.readInt(), is.readInt(), is.readDouble());
+						newFill((Message.NewFill) m);
 						break;
 				}
                 work_was_done = true;
@@ -225,6 +220,9 @@ public class OrderManager extends Actor{
 
 	// Actions
 	// ----------------------------------------------------------------
+
+
+
 	protected void newOrder(int clientId, int clientOrderId, NewOrderSingle nos) throws IOException {
 
 		orders.put(id, new PendingOrder(new Order(clientId, id, nos.instrument, nos.size, clientOrderId)));
@@ -302,15 +300,17 @@ public class OrderManager extends Actor{
 		}
 	}
 
-	private void newFill(int id, int sliceId, int size, double price) throws IOException {
-        PendingOrder po = orders.get(id);
+	// Incoming Router Messages
+	// ------------------------------------------------------------------------
+	private void newFill(Message.NewFill m) throws IOException {
+        PendingOrder po = orders.get(m.order_id);
 
 	    Order o = po.order;
-		o.slices.get(sliceId).createFill(size, price);
+		o.slices.get(m.slice_id).createFill(m.size, m.price);
 
 		po.slice_num -= 1;
-		po.size_remain -= size;
-        String message = "11=" + o.client_order_id + ";38=" + size + ";44=" + price;
+		po.size_remain -= m.size;
+        String message = "11=" + o.client_order_id + ";38=" + m.size + ";44=" + m.price;
 
 		if (o.sizeRemaining() == 0) {
             message = message + ";39=2";
@@ -325,6 +325,19 @@ public class OrderManager extends Actor{
         sendMessageToClient(o.clientid, message);
 	}
 
+	void bestPrice(int router_id, Message.BestPrice m) throws IOException{
+		Order slice = orders.get(m.order_id).order.slices.get(m.slice_id);
+
+		slice.bestPrices[router_id] = m.price;
+		slice.bestPriceCount += 1;
+
+		if (slice.bestPriceCount == slice.bestPrices.length)
+			routeOrder(m.slice_id, slice);
+	}
+
+	// Outcoming Router Messages
+	// ------------------------------------------------------------------------
+
 	/** Ask for the best price to each router
 	 * 	@param id		Order id
 	 * 	@param sliceId  Slice id
@@ -334,13 +347,15 @@ public class OrderManager extends Actor{
 	private void askBestPrice(int id, int sliceId, int size, Order order) throws IOException {
 		for (Socket r : routers) {
 
+			sendMessage(r, new Message.PriceAtSize(id, sliceId, order.instrument, size));
+			/*
 			ObjectOutputStream os = new ObjectOutputStream(r.getOutputStream());
 				os.writeObject(Router.MessageKind.REQPriceAtSize);
 				os.writeInt(id);
 				os.writeInt(sliceId);
 				os.writeObject(order.instrument);
 				os.writeInt(order.sizeRemaining());
-				os.flush();
+				os.flush(); */
 		}
 
 		// need to wait for these prices to come back before routing
@@ -351,15 +366,18 @@ public class OrderManager extends Actor{
 	/** Buy/Sell the instrument at the min/max price possible */
 	private void routeOrder(int sliceId, Order o) throws IOException {
 		// if o.size < 0 => We are selling
-		int index = o.size > 0 ? getBestBuyPrice(o) : getBestSellPrice(o);
+		int size = o.sizeRemaining();
+		int index = size > 0 ? getBestBuyPrice(o) : getBestSellPrice(o);
 
+		sendMessage(routers.get(index), new Message.RouteOrder(o.id, sliceId, o.instrument, size));
+		/*
 		ObjectOutputStream os = new ObjectOutputStream(routers.get(index).getOutputStream());
 			os.writeObject(Router.MessageKind.REQRouteOrder);
 			os.writeInt(o.id);
 			os.writeInt(sliceId);
 			os.writeInt(o.sizeRemaining());
 			os.writeObject(o.instrument);
-			os.flush();
+			os.flush(); */
 	}
 
 	// TODO

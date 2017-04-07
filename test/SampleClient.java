@@ -6,6 +6,7 @@ import Ref.Instrument;
 import Utility.Connection.ConnectionType;
 import Utility.HelperObject;
 import Utility.Util;
+import org.apache.log4j.Level;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -40,6 +41,7 @@ public class SampleClient extends OrderManagerClient implements Client, Runnable
         initLog(this.getClass().getName());
         print_delta = print_delta_;
         initial_orders = initial_orders_;
+        //classLog.setLevel(Level.DEBUG);
     }
     
     void connectToOrderManager(InetSocketAddress address) throws IOException{

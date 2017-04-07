@@ -17,8 +17,8 @@ public class MockConfig {
     };
 
     public static int allow_randomness = 0;
-    public static int slice_size = 500;
-    public static int fill_size = 500;
+    public static int slice_size = 100;
+    public static int fill_size = 100;
 
     public static double getPriceAtSize(Instrument i, int size) {
         double eps = RANDOM_NUM_GENERATOR.nextGaussian();
@@ -44,7 +44,7 @@ public class MockConfig {
 
 
     static int getClientOrderSize(){
-        return 1000;
+        return 200;
         //if (client_count++ % 2 == 0)
         //    return 500;
         //return 500;

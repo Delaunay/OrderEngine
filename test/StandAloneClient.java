@@ -22,8 +22,9 @@ public class StandAloneClient {
         HashMap opt = Util.readArgs(args, options); */
         Configuration conf = new Configuration();
 
-        String om_hostname = conf.getHostname();
+        String om_hostname = "10.83.16.19";// conf.getHostname();
         int    om_port     = conf.getOrderManagerPort();
+
 
         SampleClient client = new SampleClient(
                 10,10,

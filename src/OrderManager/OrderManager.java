@@ -8,7 +8,7 @@ import OrderManager.ClientThread.PendingNewOrder;
 import OrderRouter.Router;
 import Ref.Instrument;
 import Utility.Connection.ConnectionType;
-import Utility.HelperObject;
+import Utility.Util;
 import com.sun.management.OperatingSystemMXBean;
 
 import java.io.IOException;
@@ -639,6 +639,8 @@ public class OrderManager extends Actor{
 		long numOrderPerSecond   = 0;
 		double averageCPU        = 0;
 
+		int k = 0;
+
         OrderManager manager;
 
 		Statistics(OrderManager manager_){
@@ -676,16 +678,54 @@ public class OrderManager extends Actor{
 			double total_orders = manager.total_orders;
             double per = manager.processed_orders / manager.total_orders;
 
-			manager.info("          Order: " + order_size + " \t" + "(AVG: " + averageTimePerOrder + ")");
-            manager.info("         Memory: " + memory + " KB (AVG: " + averageMemoryUsage + " KB)");
-            manager.info("       CPU load: " + trunc(cpu * 100) + " \t(AVG: " + trunc(averageCPU * 100 / memoryCount) + "%)");
-            manager.info(" OrderProcessed: " + processed + "  (" + trunc(per * 100) + "%)   " + " Total: " + total_orders);
+            String color = null;
+            if (k % 3 == 0)
+                color = Util.COLOR_WHITE;
+            else if (k % 3 == 1)
+                color = Util.COLOR_BLUE;
+            else
+                color = Util.COLOR_CYAN;
+            int col_size = 6;
+
+            System.out.print(color);
+			manager.info("          Order: " + pad(order_size, col_size)
+                                  + "    (AVG: " + averageTimePerOrder + ")");
+
+            manager.info("         Memory: " + pad(memory, col_size)
+                                  + " KB (AVG: " + averageMemoryUsage + " KB)");
+
+            manager.info("       CPU load: " + pad(trunc(cpu * 100), col_size)
+                                  + " %  (AVG: " + trunc(averageCPU * 100 / memoryCount) + "%)");
+
+            manager.info(" OrderProcessed: " + pad((int) processed, col_size)
+                                  + "    (   : " + trunc(per * 100) + "%)");
+            
+            k += 1;
 
 			if(memory > 1048576 ){
 				System.exit(0);
 			}
 		}
 	}
+    static String pad(int m, int col_size){
+        return pad(Integer.toString(m), col_size);
+    }
+
+    static String pad(long m, int col_size){
+        return pad(Long.toString(m), col_size);
+    }
+
+    static String pad(double m, int col_size){
+        return pad(Double.toString(m), col_size);
+    }
+
+    static String pad(String m, int col_size){
+	    if (m.length() >= col_size)
+	        return m.substring(0, col_size);
+	    String padding = new String(new char[col_size - m.length()]);
+	    padding.replace('\0', ' ');
+	    return m + padding;
+    }
 
     static class ScheduledPrint extends Utility.Util.ScheduledTask{
         OrderManager manager;

@@ -16,7 +16,7 @@ public class Configuration {
         prop.setProperty("port", "2000");
         prop.setProperty("port-order", "2000");
         prop.setProperty("num-client", "4");
-        prop.setProperty("num-trader", "2");
+        prop.setProperty("num-trader", "4");
         prop.setProperty("num-router", "2");
         prop.setProperty("hostname", "localhost");
 

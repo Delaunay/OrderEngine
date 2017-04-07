@@ -5,6 +5,23 @@ import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
 
 public class Util {
+    static public String COLOR_NC            = (char)27 + "[0m'; ";
+    static public String COLOR_WHITE         = (char)27 + "[1;37m";
+    static public String COLOR_BLACK         = (char)27 + "[0;30m";
+    static public String COLOR_BLUE          = (char)27 + "[0;34m";
+    static public String COLOR_LIGHT_BLUE    = (char)27 + "[1;34m";
+    static public String COLOR_GREEN         = (char)27 + "[0;32m";
+    static public String COLOR_LIGHT_GREEN   = (char)27 + "[1;32m";
+    static public String COLOR_CYAN          = (char)27 + "[0;36m";
+    static public String COLOR_LIGHT_CYAN    = (char)27 + "[1;36m";
+    static public String COLOR_RED           = (char)27 + "[0;31m";
+    static public String COLOR_LIGHT_RED     = (char)27 + "[1;31m";
+    static public String COLOR_PURPLE        = (char)27 + "[0;35m";
+    static public String COLOR_LIGHT_PURPLE  = (char)27 + "[1;35m";
+    static public String COLOR_BROWN         = (char)27 + "[0;33m";
+    static public String COLOR_YELLOW        = (char)27 + "[1;33m";
+    static public String COLOR_GRAY          = (char)27 + "[0;30m";
+    static public String COLOR_LIGHT_GRAY    = (char)27 + "[0;37m";
 
     public static abstract class ScheduledTask{
         private long start = System.currentTimeMillis();

@@ -19,7 +19,7 @@ public class Main {
         int num_router     = conf.getRouterNumber();
         int num_trader     = conf.getTraderNumber();
         int initial_orders = 10;
-        int print_delta    = 10;
+        int order_delta    = 2;
 
 
         //LiveMarketData liveMarketData = new SampleLiveMarketData();
@@ -53,7 +53,7 @@ public class Main {
         InetSocketAddress om_address = new InetSocketAddress(om_hostname, om_port);
 
         for(int i = 0; i < num_client; ++i) {
-            Thread t = new Thread( new SampleClient(print_delta, initial_orders, om_address));
+            Thread t = new Thread( new SampleClient(order_delta, initial_orders, om_address));
                 t.setName("Client " + i);
                 t.start();
         }

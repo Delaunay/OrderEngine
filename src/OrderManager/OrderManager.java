@@ -699,7 +699,7 @@ public class OrderManager extends Actor{
 
             manager.info(" OrderProcessed: " + pad((int) processed, col_size)
                                   + "    (   : " + trunc(per * 100) + "%)");
-            
+
             k += 1;
 
 			if(memory > 1048576 ){

@@ -56,6 +56,21 @@ public class OrderManager extends Actor{
     private ConcurrentLinkedQueue<PendingNewOrder>
 			pending_new_orders = new ConcurrentLinkedQueue<>();
 
+
+    static class PendingMessage{
+        int actor_id;
+        Message message;
+
+        PendingMessage(int id, Message m){
+            actor_id = id;
+            message = m;
+        }
+    }
+
+    // Messages being received
+    private ConcurrentLinkedQueue<PendingMessage>
+            pending_messages = new ConcurrentLinkedQueue<>();
+
     private HashMap<Instrument, LinkedList<Slice>> sliceTable = new HashMap<>(10);
 
     private LiveMarketData      			liveMarketData;
@@ -107,7 +122,6 @@ public class OrderManager extends Actor{
         } catch (InterruptedException e){}
     }
 
-
 	public Socket getTrader(){
 	    Socket t = traders.get(next_trader);
 	    next_trader += 1;
@@ -115,134 +129,77 @@ public class OrderManager extends Actor{
 	    return t;
     }
 
-	/** Return true if some work has been done */
-	public boolean runOnce() throws IOException, ClassNotFoundException, InterruptedException{
-		boolean rm = processRouterMessages();
-		boolean tm = processTraderMessages();
-	    return rm || tm;
-	}
-
-
-    void addNewOrder(PendingNewOrder nos){
-        pending_new_orders.add(nos);
+    void addMessage(PendingMessage m){
+        pending_messages.add(m);
     }
 
-    public void runPendingNewOrders(){
-        // send message
-        int k = 0;
-        int size = pending_new_orders.size();
-        PendingNewOrder pno = pending_new_orders.poll();
-
-        debug("PendingOrders: " + size);
-
-        while(pno != null && k < 50){
-            try {
-                this.newOrder(pno.client_id, pno.client_order_id, pno.new_order);
-            } catch (IOException e){
-                error("Could not send message to client");
-            }
-            k += 1;
-            pno = pending_new_orders.poll();
-        }
+    void addMessage(int actor_id, Message m){
+        pending_messages.add(new PendingMessage(actor_id, m));
     }
-
-	public void run(){
-        // Print the summary from time to time
-        ScheduledPrint sp = new ScheduledPrint(print_delta, this);
-
-		while(true){
-            if (pending_new_orders.size() > 0)
-                runPendingNewOrders();
-
-		    try {
-                acceptConnection();
-            } catch (IOException e){
-		    	error("Failed to connect to a client");
-            }
-
-			try {
-				runOnce();
-			} catch (IOException e) {
-				e.printStackTrace();
-				break;
-			} catch (ClassNotFoundException e) {
-				e.printStackTrace();
-				break;
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-				break;
-			}
-
-            sp.run();
-			sleep(1);
-		}
-	}
 
 	// Read Incoming Messages
 	// ------------------------------------------------------------------------
+    public void messageDispatcher(int actor_id, Message m) throws IOException{
+        switch (m.op) {
+            // Router Messages
+            case ANSBestPrice:
+                bestPrice(actor_id, (Message.BestPrice) m);
+                break;
 
-	public boolean processRouterMessages() throws IOException, ClassNotFoundException{
-		Socket router;
-		boolean work_was_done = false;
+            case ANSNewFill:
+                newFill((Message.NewFill) m);
+                break;
 
-		for (int router_id = 0; router_id < routers.size(); router_id++) {
-			router = routers.get(router_id);
+            // Trader Messages
+            case ANSAcceptOrder:
+                acceptOrder((Message.TraderAcceptOrder) m);
 
-			while (router.getInputStream().available() > 0)
-            {
-				Message m = readMessage(router);
+                break;
+            case ANSSliceOrder:
+                sliceOrder((Message.TraderSliceOrder) m);
+                break;
 
-				debug(" calling " + m.op);
+            // Client Messages
+            case ANSNewOrder:
+                newOrder(actor_id, (Message.NewOrderSingle) m);
+                break;
 
-				switch (m.op) {
-					case ANSBestPrice:
-						bestPrice(router_id, (Message.BestPrice) m);
-						break;
+            case ANSCancel:
+                break;
 
-					case ANSNewFill:
-						newFill((Message.NewFill) m);
-						break;
+            default:
+                error("unsupported operation: " + m.op);
+                break;
+        }
+    }
 
-                    default:
-                        error("Router: unsupported operation: " + m.op);
-                        break;
-				}
-                work_was_done = true;
-			}
-		}
-		return work_was_done;
-	}
+    void run(){
+        while(true){
 
-	public boolean processTraderMessages() throws IOException, ClassNotFoundException{
-        boolean work_was_done = false;
 
-        for (int trader_id = 0; trader_id < traders.size(); trader_id++) {
-            Socket trader = traders.get(trader_id);
-
-            //info(" " + trader);
-
-            if(trader.getInputStream().available() > 0)
-            {
-				Message m = readMessage(trader);
-
-                debug(" calling " + m.op);
-
-                switch (m.op) {
-                    case ANSAcceptOrder:
-                    	acceptOrder((Message.TraderAcceptOrder) m);
-                        break;
-                    case ANSSliceOrder:
-                        sliceOrder((Message.TraderSliceOrder) m);
-                        break;
-                    default:
-                        error("Trader: unsupported operation: " + m.op);
-                        break;
-                }
-                work_was_done = true;
+            try {
+                acceptConnection();
+            } catch (IOException e){
+                error("Failed to connect to a client");
             }
-	    }
-		return work_was_done;
-	}
+
+
+            PendingMessage pm = pending_messages.poll();
+
+            if (pm == null) {
+                sleep(1);
+                continue;
+            }
+
+            try {
+                messageDispatcher(pm.actor_id, pm.message);
+            } catch (IOException e){
+                error("An error occurred while processing a message (" + pm.message.op + ")");
+            }
+        }
+    }
+
+
 
     void sendMessageToClient(int client_id, String message){
         ClientThread client = client_threads.get(client_id);
@@ -253,10 +210,10 @@ public class OrderManager extends Actor{
 	// ----------------------------------------------------------------
 
 
-	protected void newOrder(int clientId, int clientOrderId, Message.NewOrderSingle nos) throws IOException {
-		PendingOrder po =  new PendingOrder(new Order(clientId, id, nos.instrument, nos.size, clientOrderId));
+	protected void newOrder(int clientId, Message.NewOrderSingle nos) throws IOException {
+		PendingOrder po =  new PendingOrder(new Order(clientId, id, nos.instrument, nos.size, nos.client_order_id));
         orders.put(id, po);
-		sendMessageToClient(clientId, "11=" + clientOrderId + ";35=A;39=A;");
+		sendMessageToClient(clientId, "11=" + nos.client_order_id + ";35=A;39=A;");
 		sendMessage(getTrader(), new Message.TraderNewOrder(id, po.order));
 		id++;
 		total_orders += 1;

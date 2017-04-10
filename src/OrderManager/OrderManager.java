@@ -186,6 +186,10 @@ public class OrderManager extends Actor{
         int k = 0;
 
         for(Socket socket : actors){
+            try {
+                info(socket.getInputStream().getClass().getName());
+            } catch (IOException e){}
+
             if (isAvailable(socket)){
 
                 Message m = readMessage(socket);

@@ -26,7 +26,8 @@ public class Util {
     public static abstract class ScheduledTask{
         private long start = System.currentTimeMillis();
         private long end;
-        protected long delta;
+        protected long delta;       // -1 disables the task
+                                    //  0 makes it fire all the time
 
         public ScheduledTask(long delta_){
             delta = delta_;
@@ -34,7 +35,7 @@ public class Util {
 
         public void run(){
             end = System.currentTimeMillis();
-            if (end - start > delta){
+            if (end - start > delta && delta >= 0){
                 start = end;
                 scheduledJob();
             }

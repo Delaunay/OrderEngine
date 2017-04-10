@@ -35,7 +35,7 @@ public class SocketReader extends Actor implements Runnable{
         Socket socket = sockets.get(id);
         try {
             while (socket.getInputStream().available() > 0)
-                manager.addMessage(id, readMessage(socket));
+                manager.addIncomingMessage(id, readMessage(socket));
         } catch (IOException e){
             error("Could not read from socket");
         }

@@ -19,7 +19,8 @@ public class Main {
         int num_router     = conf.getRouterNumber();
         int num_trader     = conf.getTraderNumber();
         int initial_orders = 10;
-        int order_delta    = 2;
+        int order_delta    = 1000;
+        int print_delta    = 1000;
 
 
         //LiveMarketData liveMarketData = new SampleLiveMarketData();

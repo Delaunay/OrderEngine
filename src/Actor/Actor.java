@@ -60,6 +60,8 @@ public abstract class Actor extends HelperObject{
     public boolean messageDispatcher(){
         return false;
     }
+
+
     public boolean isAvailable(){
         try {
             return connection().getInputStream().available() > 0;
@@ -67,4 +69,13 @@ public abstract class Actor extends HelperObject{
             return false;
         }
     }
+
+    public boolean isAvailable(Socket socket){
+        try {
+            return socket.getInputStream().available() > 0;
+        } catch (IOException e){
+            return false;
+        }
+    }
+
 }

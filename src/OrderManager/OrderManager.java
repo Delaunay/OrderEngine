@@ -4,7 +4,7 @@ import Actor.Actor;
 import Actor.Message;
 import Database.Database;
 import LiveMarketData.LiveMarketData;
-import OrderManager.ClientThread.PendingNewOrder;
+//import OrderManager.ClientThread.PendingNewOrder;
 import OrderRouter.Router;
 import Ref.Instrument;
 import Utility.Connection.ConnectionType;
@@ -17,6 +17,7 @@ import java.io.ObjectOutputStream;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
@@ -53,8 +54,8 @@ public class OrderManager extends Actor{
 			orders = new ConcurrentHashMap<>();
 
     // New order being received
-    private ConcurrentLinkedQueue<PendingNewOrder>
-			pending_new_orders = new ConcurrentLinkedQueue<>();
+    //private ConcurrentLinkedQueue<PendingNewOrder>
+	//		pending_new_orders = new ConcurrentLinkedQueue<>();
 
 
     static class PendingMessage{
@@ -69,7 +70,11 @@ public class OrderManager extends Actor{
 
     // Messages being received
     private ConcurrentLinkedQueue<PendingMessage>
-            pending_messages = new ConcurrentLinkedQueue<>();
+            incoming_messages = new ConcurrentLinkedQueue<>();
+
+    // Messages being sent
+    private ConcurrentLinkedQueue<PendingMessage>
+            oncoming_messages = new ConcurrentLinkedQueue<>();
 
     private HashMap<Instrument, LinkedList<Slice>> sliceTable = new HashMap<>(10);
 
@@ -78,9 +83,13 @@ public class OrderManager extends Actor{
     private int                     		print_delta = 1000;
 	private int 							id          = 0;
 	private int                     		next_trader = 0;
+
+	private ArrayList<Socket>				actors = new ArrayList<>(300);
+
+    private ArrayList<Socket>				routers = new ArrayList<>(100);
+    private ArrayList<Socket>				clients = new ArrayList<>(100);
 	private ArrayList<Socket> 				traders = new ArrayList<>(100);
-	private ArrayList<Socket>				routers = new ArrayList<>(100);
-    private ArrayList<ClientThread> 		client_threads = new ArrayList<>(100);
+
 	private ServerSocketChannel 			serverSocket;
 	private Statistics						stats = new Statistics(this);
 
@@ -129,17 +138,17 @@ public class OrderManager extends Actor{
 	    return t;
     }
 
-    void addMessage(PendingMessage m){
-        pending_messages.add(m);
+    void addIncomingMessage(int actor_id, Message m){
+        incoming_messages.add(new PendingMessage(actor_id, m));
     }
 
-    void addMessage(int actor_id, Message m){
-        pending_messages.add(new PendingMessage(actor_id, m));
+    void addOncomingMessage(int actor_id, Message m){
+        oncoming_messages.add(new PendingMessage(actor_id, m));
     }
 
 	// Read Incoming Messages
 	// ------------------------------------------------------------------------
-    public void messageDispatcher(int actor_id, Message m) throws IOException{
+    public void messageDispatcher(int actor_id, Message m){
         switch (m.op) {
             // Router Messages
             case ANSBestPrice:
@@ -173,44 +182,76 @@ public class OrderManager extends Actor{
         }
     }
 
-    void run(){
+    void readMessages(){
+        int k = 0;
+
+        for(Socket socket : actors){
+            if (isAvailable(socket)){
+
+                Message m = readMessage(socket);
+
+                if (m != null) {
+                    //info("Message (" + m.op + ") was added");
+                    addIncomingMessage(k, m);
+                }
+           }
+
+            k += 1;
+        }
+    }
+
+    void sendMessages(){
+        for (PendingMessage message : oncoming_messages){
+            Socket dest = actors.get(message.actor_id);
+            sendMessage(dest, message.message);
+        }
+    }
+
+    void dispatchMessages(){
+        // process messages
+        PendingMessage pm = incoming_messages.poll();
+
+        if (pm == null)
+           return;
+
+        messageDispatcher(pm.actor_id, pm.message);
+    }
+
+    public void run(){
+        ScheduledPrint p = new ScheduledPrint(1000, this);
+
         while(true){
 
+            // Accept new client connection
+            acceptConnection();
 
-            try {
-                acceptConnection();
-            } catch (IOException e){
-                error("Failed to connect to a client");
-            }
+            // read messages and put them in a queue
+            readMessages();
 
+            // read first message and execute the appropriate action
+            dispatchMessages();
 
-            PendingMessage pm = pending_messages.poll();
+            // send pending messages
+            sendMessages();
 
-            if (pm == null) {
-                sleep(1);
-                continue;
-            }
+            // Print stats
+            p.run();
 
-            try {
-                messageDispatcher(pm.actor_id, pm.message);
-            } catch (IOException e){
-                error("An error occurred while processing a message (" + pm.message.op + ")");
-            }
+            // dont use 100% CPU
+            sleep(1);
         }
     }
 
 
-
     void sendMessageToClient(int client_id, String message){
-        ClientThread client = client_threads.get(client_id);
-        client.addMessage(new Message.FIXMessage(message));
+        addOncomingMessage(client_id, new Message.FIXMessage(message));
     }
     
 	// Actions
 	// ----------------------------------------------------------------
 
 
-	protected void newOrder(int clientId, Message.NewOrderSingle nos) throws IOException {
+	protected void newOrder(int clientId, Message.NewOrderSingle nos) {
 		PendingOrder po =  new PendingOrder(new Order(clientId, id, nos.instrument, nos.size, nos.client_order_id));
         orders.put(id, po);
 		sendMessageToClient(clientId, "11=" + nos.client_order_id + ";35=A;39=A;");
@@ -219,7 +260,7 @@ public class OrderManager extends Actor{
 		total_orders += 1;
 	}
 
-	public void acceptOrder(Message.TraderAcceptOrder m) throws IOException {
+	public void acceptOrder(Message.TraderAcceptOrder m) {
 		Order o = orders.get(m.order_id).order;
 
 		if (o.OrdStatus != 'A') { // Pending New
@@ -232,7 +273,7 @@ public class OrderManager extends Actor{
         price(m.order_id, o);
 	}
 
-	public void sliceOrder(Message.TraderSliceOrder m) throws IOException {
+	public void sliceOrder(Message.TraderSliceOrder m) {
 		PendingOrder po = orders.get(m.order_id);
 		LinkedList<Slice> slice = sliceTable.get(po.order.instrument);
 
@@ -360,7 +401,7 @@ public class OrderManager extends Actor{
 
 	// Incoming Router Messages
 	// ------------------------------------------------------------------------
-	private void newFill(Message.NewFill m) throws IOException {
+	private void newFill(Message.NewFill m) {
         PendingOrder po = orders.get(m.order_id);
 
         po.fills.add(new Fill(m.size, m.price));
@@ -389,7 +430,7 @@ public class OrderManager extends Actor{
 		sendMessageToClient(po.order.clientid, message);
 	}
 
-	void bestPrice(int router_id, Message.BestPrice m) throws IOException{
+	void bestPrice(int router_id, Message.BestPrice m){
 		// Order slice = orders.get(m.order_id).order.slices.get(m.slice_id);
 
         PendingOrder po = orders.get(m.order_id);
@@ -410,7 +451,7 @@ public class OrderManager extends Actor{
 	 * 	@param sliceId  Slice id
 	 * 	@param slice 	Order object
 	 * 	*/
-	private void askBestPrice(int id, int sliceId, Slice slice) throws IOException {
+	private void askBestPrice(int id, int sliceId, Slice slice) {
 		for (Socket r : routers) {
 			sendMessage(r, new Message.PriceAtSize(id, sliceId, slice.parent.order.instrument, slice.size));
 		}
@@ -421,7 +462,7 @@ public class OrderManager extends Actor{
 	}
 
 	/** Buy/Sell the instrument at the min/max price possible */
-	private void routeOrder(int slice_id, PendingOrder po) throws IOException {
+	private void routeOrder(int slice_id, PendingOrder po){
 		// if o.size < 0 => We are selling
 		int size = po.size_remain;
 		Slice slice = po.slices.get(slice_id);
@@ -441,7 +482,7 @@ public class OrderManager extends Actor{
 
 	}
 
-	private void price(int id, Order o) throws IOException {
+	private void price(int id, Order o) {
 		//sendMessage(liveData, new Message.SetPrice(o));
         liveMarketData.setPrice(o);
 		sendMessage(getTrader(), new Message.TraderPrice(id, o));
@@ -478,15 +519,25 @@ public class OrderManager extends Actor{
 
 	// Connection
     // ------------------------------------------------------------------------
-	public void acceptConnection() throws IOException{
-		SocketChannel channel = serverSocket.accept();
+	public void acceptConnection(){
+        SocketChannel channel = null;
+
+	    try {
+            channel = serverSocket.accept();
+        } catch (IOException e){
+	        error("Server was not able to connect to client");
+        }
 
 		if (channel == null)
 			return;
 
 		Socket con = channel.socket();
-		con.setSendBufferSize(socket_buffer);
-		con.setReceiveBufferSize(socket_buffer);
+		try {
+            con.setSendBufferSize(socket_buffer);
+            con.setReceiveBufferSize(socket_buffer);
+        } catch (SocketException e){
+		    error("Server was not able to set Buffer size");
+        }
 		//con.setKeepAlive(true);
 
 		try {
@@ -508,7 +559,9 @@ public class OrderManager extends Actor{
 			}
 		} catch (ClassNotFoundException e){
 			error("Connection Type unknown");
-		}
+		} catch (IOException e){
+		    error("Was not able to read from client socket");
+        }
 	}
 
 	void acceptConnection(Socket con){
@@ -525,33 +578,21 @@ public class OrderManager extends Actor{
 		int size = traders.size();
 		info("Trader (" + size + ") has connected");
 		traders.add(trader);
+		actors.add(trader);
 	}
 
 	void addRouterConnection(Socket router){
 		int size = routers.size();
 		info("Router (" + size + ") has connected");
 		routers.add(router);
+		actors.add(router);
 	}
 
 	void addClientConnection(Socket client){
-		int size = client_threads.size();
+		int size = clients.size();
 		info("Client (" + size + ") has connected");
-		spawnClient(size, client);
-	}
-
-	/*
-	void addLiveMarketDataConnection(Socket liveMData){
-		info("Live Market has connected");
-		liveData = liveMData;
-	} */
-
-	public void spawnClient(int client_id, Socket client) {
-		ClientThread ct = new ClientThread(client_id, client, this);
-		client_threads.add(ct);
-
-		Thread t = new Thread(ct);
-		t.setName("ClientThread " + client_id);
-		t.start();
+		clients.add(client);
+		actors.add(client);
 	}
 
 	private Socket connect(InetSocketAddress location) throws InterruptedException {
@@ -615,17 +656,14 @@ public class OrderManager extends Actor{
 			totalMemoryUsage += memory;
 			memoryCount += 1;
 
-			if(order_size > 0){
-				long now = System.currentTimeMillis();
-				long diffOrders = order_size - lastOrderSize;
+            long now = System.currentTimeMillis();
+            long diffOrders = order_size - lastOrderSize;
 
-				lastOrderSize = order_size;
-				if (now > startingTime){
-					numOrderPerSecond = (diffOrders  * 1000 /(now - lastTime));
-					averageTimePerOrder = (int) manager.processed_orders * 1000 / (now - startingTime);
-					lastTime = now;
-				}
-			}
+            lastOrderSize = order_size;
+
+            numOrderPerSecond = (diffOrders  * 1000 /(now - lastTime));
+            averageTimePerOrder = (long) order_size * 1000 / (now - startingTime);
+            lastTime = now;
 
 			long averageMemoryUsage = totalMemoryUsage / memoryCount;
 			double cpu = cpuMeasure.getProcessCpuLoad();

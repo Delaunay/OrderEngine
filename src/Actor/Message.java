@@ -77,7 +77,7 @@ public class Message implements Serializable{
                 case "35": //
                     m.MsgType = tag_value[1].charAt(0);
                     break;
-                case "38":  // size
+                case "38": // size
                     m.size = Integer.parseInt(tag_value[1]);
                     break;
                 case "39": // Status
